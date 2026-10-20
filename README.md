@@ -22,10 +22,9 @@
 
 | Integrante | Rol |
 |---|---|
-| Mariana Uribe Muñoz | Líder del repositorio |
-| _Nombre_ | _Rol_ |
-| _Nombre_ | _Rol_ |
-| _Nombre_ | _Rol_ |
+| Mariana Uribe Muñoz | Líder del repositorio, GitHub Flow y proyecto base |
+| Valeria Usuga | Modelado de datos y arquitectura |
+| Ismael Mira | Diseño UI/UX en Google Stitch |
 
 ---
 
@@ -110,6 +109,8 @@ erDiagram
         string unitName
     }
 ```
+
+<img src="docs/capturas/diagrama-er.png" width="600" alt="Diagrama ER a color">
 
 ### Relaciones
 
@@ -250,10 +251,9 @@ flowchart LR
 
 | Integrante | Parte que presenta |
 |---|---|
-| _Nombre_ | Idea y APIs |
-| _Nombre_ | Diagrama ER |
-| _Nombre_ | Diseño en Google Stitch |
-| _Nombre_ | Arquitectura y proyecto base |
+| Mariana Uribe Muñoz | Idea, APIs y proyecto base |
+| Valeria Usuga | Diagrama ER y arquitectura MVVM |
+| Ismael Mira | Diseño de pantallas en Google Stitch |
 
 ---
 
