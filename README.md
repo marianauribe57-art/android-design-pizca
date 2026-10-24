@@ -247,7 +247,7 @@ flowchart LR
 
 ## 🎬 Hito 6: Video de presentación
 
-🔗 **Video:** _pendiente — agregar enlace de YouTube o Google Drive_
+🔗 **Video:** [Ver video de presentación](https://drive.google.com/file/d/1hSqCkEyFbiReyu0WETBN95fRdOllDmlM/view?usp=sharing)
 
 | Integrante | Parte que presenta |
 |---|---|
