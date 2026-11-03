@@ -14,7 +14,8 @@
 5. [Arquitectura y endpoints](#-hito-4-arquitectura-y-consumo-de-las-apis)
 6. [Proyecto base](#-hito-5-proyecto-base-en-android-studio)
 7. [Video de presentación](#-hito-6-video-de-presentación)
-8. [Flujo de trabajo en GitHub](#-flujo-de-trabajo-github-flow)
+8. [Navegación Type-Safe](#-navegación-type-safe)
+9. [Flujo de trabajo en GitHub](#-flujo-de-trabajo-github-flow)
 
 ---
 
@@ -175,18 +176,6 @@ erDiagram
 - **Datos:** cálculo local con fórmula de gasto energético; el perfil se guarda en **DataStore**. No consume API.
 - **Acciones:** editar datos, elegir objetivo (bajar de peso, mantenerse, ganar músculo) y ver el plato recomendado.
 
-### Flujo de navegación
-
-```mermaid
-flowchart LR
-    INICIO[Inicio] -- idMeal --> DETALLE[Detalle de receta]
-    BUSQUEDA[Búsqueda] -- idMeal --> DETALLE
-    DETALLE -- idMeal --> CHEF[Chef Teo]
-    INICIO <-. barra inferior .-> BUSQUEDA
-    INICIO <-. barra inferior .-> CHEF
-    INICIO <-. barra inferior .-> PERFIL[Mi perfil]
-```
-
 La barra inferior conecta **Inicio, Buscar, Chef y Perfil**. El dato que viaja entre pantallas es el `idMeal` de la receta seleccionada.
 
 ---
@@ -256,6 +245,44 @@ flowchart LR
 | Ismael Mira | Diseño de pantallas en Google Stitch |
 
 ---
+
+## 🧭 Navegación (Type-Safe)
+
+La app usa la navegación oficial de Jetpack Compose con rutas `@Serializable`:
+
+- **NavController**: el "GPS" de la app. Guarda la pila de pantallas y hace los cambios.
+- **NavHost**: el mapa que une cada ruta con su pantalla.
+- **composable<Ruta>**: registra una pantalla en el mapa.
+- **toRoute()**: recupera los datos que viajan en la ruta (por ejemplo, el `recetaId`).
+
+### Rutas
+
+| Ruta | Tipo | Datos que lleva | Pantalla |
+|---|---|---|---|
+| `InicioRuta` | object | — | InicioScreen |
+| `BusquedaRuta` | object | — | BusquedaScreen |
+| `PerfilRuta` | object | — | PerfilScreen |
+| `DetalleRuta` | data class | `recetaId: String` | DetalleScreen |
+| `ChefRuta` | data class | `recetaId: String?` (opcional) | ChefScreen |
+
+### Flujo
+
+```mermaid
+flowchart LR
+    I[InicioRuta] -- "navigate(DetalleRuta(id))" --> D[DetalleRuta]
+    B[BusquedaRuta] -- "navigate(DetalleRuta(id))" --> D
+    D -- "navigate(ChefRuta(id))" --> C[ChefRuta]
+    D -- popBackStack --> I
+    I <-. barra inferior .-> B
+    I <-. barra inferior .-> C
+    I <-. barra inferior .-> P[PerfilRuta]
+```
+
+<img src="docs/capturas/flujo-pizca.png" width="600" alt="Diagrama de flujo de navegación">
+
+- Las pantallas no reciben el `NavController`: reciben eventos como `onRecetaClick` y `onVolver`.
+- La barra inferior usa `popUpTo`, `launchSingleTop` y `restoreState` para no repetir pantallas y recordar cada pestaña.
+- En el Detalle se oculta la barra inferior.
 
 ## 🔀 Flujo de trabajo (GitHub Flow)
 
