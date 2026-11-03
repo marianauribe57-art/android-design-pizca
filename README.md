@@ -290,6 +290,8 @@ flowchart LR
     I <-. barra inferior .-> P[PerfilRuta]
 ```
 
+<img src="docs/capturas/flujo-navegacion.png" width="600" alt="Diagrama de flujo de navegación">
+
 - Las pantallas no reciben el `NavController`: reciben eventos como `onRecetaClick` y `onVolver`.
 - La barra inferior usa `popUpTo`, `launchSingleTop` y `restoreState` para no repetir pantallas y recordar cada pestaña.
 - En el Detalle se oculta la barra inferior.
