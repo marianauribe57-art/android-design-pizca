@@ -176,18 +176,6 @@ erDiagram
 - **Datos:** cálculo local con fórmula de gasto energético; el perfil se guarda en **DataStore**. No consume API.
 - **Acciones:** editar datos, elegir objetivo (bajar de peso, mantenerse, ganar músculo) y ver el plato recomendado.
 
-### Flujo de navegación
-
-```mermaid
-flowchart LR
-    INICIO[Inicio] -- idMeal --> DETALLE[Detalle de receta]
-    BUSQUEDA[Búsqueda] -- idMeal --> DETALLE
-    DETALLE -- idMeal --> CHEF[Chef Teo]
-    INICIO <-. barra inferior .-> BUSQUEDA
-    INICIO <-. barra inferior .-> CHEF
-    INICIO <-. barra inferior .-> PERFIL[Mi perfil]
-```
-
 La barra inferior conecta **Inicio, Buscar, Chef y Perfil**. El dato que viaja entre pantallas es el `idMeal` de la receta seleccionada.
 
 ---
@@ -290,7 +278,7 @@ flowchart LR
     I <-. barra inferior .-> P[PerfilRuta]
 ```
 
-<img src="docs/capturas/flujo-navegacion.png" width="600" alt="Diagrama de flujo de navegación">
+<img src="docs/capturas/flujo-pizca.png" width="600" alt="Diagrama de flujo de navegación">
 
 - Las pantallas no reciben el `NavController`: reciben eventos como `onRecetaClick` y `onVolver`.
 - La barra inferior usa `popUpTo`, `launchSingleTop` y `restoreState` para no repetir pantallas y recordar cada pestaña.
