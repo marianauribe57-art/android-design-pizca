@@ -2,19 +2,22 @@ package com.adso.pizca.presentation.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -22,120 +25,157 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.adso.pizca.data.dto.Objetivo
 import com.adso.pizca.presentation.viewmodel.PerfilViewModel
+import com.adso.pizca.ui.theme.Blanco
+import com.adso.pizca.ui.theme.CafeOscuro
 import com.adso.pizca.ui.theme.Crema
 import com.adso.pizca.ui.theme.Durazno
 import com.adso.pizca.ui.theme.Menta
 import com.adso.pizca.ui.theme.RosaCoral
+
+private val RojoError = Color(0xFFA12B2B)
 
 @Composable
 fun PerfilScreen(viewModel: PerfilViewModel = viewModel()) {
     val meta by viewModel.meta.collectAsState()
     val error by viewModel.error.collectAsState()
 
-
     // Si ya se calculó antes, los campos arrancan con esos datos
-    val guardado = viewModel.perfil.value
+    val guardado by viewModel.perfil.collectAsState()
     var peso by rememberSaveable { mutableStateOf(guardado?.pesoKg?.let { numeroTexto(it) } ?: "") }
     var estatura by rememberSaveable { mutableStateOf(guardado?.estaturaCm?.let { numeroTexto(it) } ?: "") }
     var edad by rememberSaveable { mutableStateOf(guardado?.edad?.toString() ?: "") }
     var esMujer by rememberSaveable { mutableStateOf(guardado?.esMujer ?: true) }
     var objetivo by rememberSaveable { mutableStateOf(guardado?.objetivo ?: Objetivo.MANTENER) }
 
-    val colorChip = FilterChipDefaults.filterChipColors(selectedContainerColor = RosaCoral)
-
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .padding(start = 20.dp, end = 20.dp, top = 22.dp, bottom = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         // Saludo
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
             Box(
-                modifier = Modifier.size(64.dp).background(Durazno, CircleShape),
+                modifier = Modifier.size(56.dp).background(Durazno, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Text("👩‍🍳", fontSize = 32.sp)
+                Icon(Icons.Outlined.Person, contentDescription = null, modifier = Modifier.size(28.dp))
             }
-            Spacer(Modifier.width(12.dp))
             Column {
-                Text("¡Hola! 👋", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Text("Nutrición personalizada con Pizca", style = MaterialTheme.typography.bodyMedium)
+                Text("¡Hola!", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                Text("Nutrición personalizada con Pizca", fontSize = 14.sp)
             }
         }
 
-        Text("Mis datos", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            CampoNumero(peso, { peso = it }, "Peso (kg)", Modifier.weight(1f))
-            CampoNumero(estatura, { estatura = it }, "Estatura (cm)", Modifier.weight(1f))
+        // Mis datos: los 3 campos en una sola fila
+        Text("Mis datos", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            CampoNumero(peso, { peso = it }, "Peso (kg)", KeyboardType.Decimal, Modifier.weight(1f))
+            CampoNumero(estatura, { estatura = it }, "Estatura (cm)", KeyboardType.Decimal, Modifier.weight(1f))
+            CampoNumero(edad, { edad = it }, "Edad", KeyboardType.Number, Modifier.weight(1f))
         }
-        CampoNumero(edad, { edad = it }, "Edad", Modifier.fillMaxWidth())
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip(selected = esMujer, onClick = { esMujer = true }, label = { Text("Mujer") }, colors = colorChip)
-            FilterChip(selected = !esMujer, onClick = { esMujer = false }, label = { Text("Hombre") }, colors = colorChip)
+            ChipOpcion("Mujer", esMujer) { esMujer = true }
+            ChipOpcion("Hombre", !esMujer) { esMujer = false }
         }
 
-        Text("Mi objetivo", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(Objetivo.entries) { o ->
-                FilterChip(
-                    selected = objetivo == o,
-                    onClick = { objetivo = o },
-                    label = { Text(o.titulo) },
-                    colors = colorChip
-                )
+        // Objetivo (baja de línea si no cabe)
+        Text("Mi objetivo", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Objetivo.entries.forEach { o ->
+                ChipOpcion(o.titulo, objetivo == o) { objetivo = o }
             }
         }
 
         Button(
             onClick = { viewModel.calcular(peso, estatura, edad, esMujer, objetivo) },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
             shape = RoundedCornerShape(50)
         ) {
-            Text("Calcular mi meta diaria", fontWeight = FontWeight.Bold)
+            Text("Calcular mi meta diaria", fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
         }
 
-        error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        error?.let { Text(it, color = RojoError, fontSize = 14.sp, fontWeight = FontWeight.Bold) }
 
         // Resultado
         meta?.let { m ->
-            Text("Mi meta diaria", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                TarjetaMeta("${m.calorias}", "kcal al día", RosaCoral, Modifier.weight(1f))
-                TarjetaMeta("${m.proteinas} g", "proteína al día", Menta, Modifier.weight(1f))
-            }
-            Card(
-                colors = CardDefaults.cardColors(containerColor = Crema),
-                shape = RoundedCornerShape(20.dp)
-            ) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("🍽️ Tu plato ideal (por comida)", fontWeight = FontWeight.Bold)
-                    Text("• ½ plato de verduras")
-                    Text("• ¼ de proteína (≈ ${m.proteinas / 3} g de proteína)")
-                    Text("• ¼ de carbohidratos (arroz, papa o pasta)")
-                    Text("≈ ${m.calorias / 3} kcal por comida, si haces 3 comidas al día.")
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Mi meta diaria", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    TarjetaMeta("${m.calorias}", "kcal al día", RosaCoral, Modifier.weight(1f))
+                    TarjetaMeta("${m.proteinas} g", "proteína al día", Menta, Modifier.weight(1f))
                 }
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Crema, RoundedCornerShape(20.dp))
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text("Tu plato ideal (por comida)", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    Text("• ½ plato de verduras", fontSize = 14.sp)
+                    Text("• ¼ de proteína (≈ ${m.proteinas / 3} g de proteína)", fontSize = 14.sp)
+                    Text("• ¼ de carbohidratos (arroz, papa o pasta)", fontSize = 14.sp)
+                    Text("≈ ${m.calorias / 3} kcal por comida, si haces 3 comidas al día.", fontSize = 14.sp)
+                }
+                Text(
+                    "Estos valores son una referencia general y no reemplazan la recomendación de un profesional de la salud.",
+                    fontSize = 12.sp
+                )
             }
-            Text(
-                "Estos valores son una referencia general y no reemplazan la recomendación de un profesional de la salud.",
-                style = MaterialTheme.typography.bodySmall
-            )
         }
     }
 }
 
 @Composable
-private fun CampoNumero(valor: String, onCambio: (String) -> Unit, etiqueta: String, modifier: Modifier = Modifier) {
-    OutlinedTextField(
-        value = valor,
-        onValueChange = onCambio,
-        label = { Text(etiqueta) },
-        singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-        shape = RoundedCornerShape(16.dp),
+private fun CampoNumero(
+    valor: String,
+    onCambio: (String) -> Unit,
+    etiqueta: String,
+    teclado: KeyboardType,
+    modifier: Modifier = Modifier
+) {
+    Column(
         modifier = modifier
-    )
+            .background(Blanco, RoundedCornerShape(16.dp))
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Text(etiqueta, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        BasicTextField(
+            value = valor,
+            onValueChange = onCambio,
+            singleLine = true,
+            textStyle = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.SemiBold, color = CafeOscuro),
+            cursorBrush = SolidColor(CafeOscuro),
+            keyboardOptions = KeyboardOptions(keyboardType = teclado),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 28.dp)
+        )
+    }
+}
+
+@Composable
+private fun ChipOpcion(texto: String, seleccionado: Boolean, onClick: () -> Unit) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(50),
+        color = if (seleccionado) RosaCoral else Blanco,
+        contentColor = CafeOscuro
+    ) {
+        Box(
+            modifier = Modifier.heightIn(min = 44.dp).padding(horizontal = 16.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(texto, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        }
+    }
 }
 
 @Composable
@@ -143,11 +183,11 @@ private fun TarjetaMeta(valor: String, etiqueta: String, color: Color, modifier:
     Column(
         modifier = modifier
             .background(color, RoundedCornerShape(20.dp))
-            .padding(16.dp),
+            .padding(14.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(valor, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-        Text(etiqueta, style = MaterialTheme.typography.bodySmall)
+        Text(valor, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+        Text(etiqueta, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 
