@@ -3,6 +3,7 @@ package com.adso.pizca.presentation.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -10,6 +11,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.RamenDining
 import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -17,12 +19,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.adso.pizca.presentation.components.ChefTeoImagen
 import com.adso.pizca.presentation.viewmodel.DetalleViewModel
 import com.adso.pizca.ui.theme.AzulCielo
+import com.adso.pizca.ui.theme.Blanco
+import com.adso.pizca.ui.theme.CafeOscuro
 import com.adso.pizca.ui.theme.Crema
+import com.adso.pizca.ui.theme.FondoPizca
 import com.adso.pizca.ui.theme.Menta
 import com.adso.pizca.ui.theme.RosaCoral
 
@@ -47,61 +54,85 @@ fun DetalleScreen(
         }
         return
     }
+    val esFavorita = r.id in favoritas
 
     Box(Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp)
-                .padding(bottom = 72.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(horizontal = 20.dp)
+                .padding(top = 16.dp, bottom = 96.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             // Barra superior: volver, título y favorita
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onVolver) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                BotonCircular(onClick = onVolver) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
                 }
                 Text(
                     "Detalle de receta",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
+                    fontSize = 19.sp,
+                    fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.weight(1f)
                 )
-                IconButton(onClick = { viewModel.cambiarFavorita(r.id) }) {
+                BotonCircular(onClick = { viewModel.cambiarFavorita(r.id) }) {
                     Icon(
-                        if (r.id in favoritas) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                        if (esFavorita) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
                         contentDescription = "Favorita",
                         tint = RosaCoral
                     )
                 }
             }
 
-            // "Foto" del plato (por ahora un emoji grande)
+            // Imagen del plato
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(180.dp)
+                    .height(150.dp)
                     .background(Crema, RoundedCornerShape(24.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Text(r.emoji, fontSize = 96.sp)
+                Icon(
+                    Icons.Outlined.RamenDining,
+                    contentDescription = null,
+                    tint = CafeOscuro,
+                    modifier = Modifier.size(84.dp)
+                )
             }
 
-            Text(r.nombre, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Etiqueta(r.pais, Menta)
-                Etiqueta(r.categoria, AzulCielo)
+            // Nombre y etiquetas
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(r.nombre, fontSize = 26.sp, lineHeight = 30.sp, fontWeight = FontWeight.Bold)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Etiqueta(r.pais, Menta)
+                    Etiqueta(r.categoria, AzulCielo)
+                }
             }
 
             // Raciones con botones - y +
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Raciones", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                IconButton(onClick = { viewModel.restarRacion() }) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Blanco, RoundedCornerShape(20.dp))
+                    .padding(start = 16.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Raciones", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                BotonCircular(onClick = { viewModel.restarRacion() }, fondo = FondoPizca) {
                     Icon(Icons.Outlined.Remove, contentDescription = "Menos raciones")
                 }
-                Text("$raciones", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                IconButton(onClick = { viewModel.sumarRacion() }) {
+                Text(
+                    "$raciones",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.widthIn(min = 36.dp)
+                )
+                BotonCircular(onClick = { viewModel.sumarRacion() }, fondo = FondoPizca) {
                     Icon(Icons.Outlined.Add, contentDescription = "Más raciones")
                 }
             }
@@ -112,31 +143,65 @@ fun DetalleScreen(
                 DatoNutricional("${viewModel.proteinas(r, raciones)} g", "proteína", Menta, Modifier.weight(1f))
             }
 
-            Text("Ingredientes", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            r.ingredientes.forEach { ingrediente ->
-                Row(Modifier.fillMaxWidth()) {
-                    Text("• ${ingrediente.nombre}", modifier = Modifier.weight(1f))
-                    Text(ingrediente.medida, fontWeight = FontWeight.Bold)
+            // Ingredientes
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("Ingredientes", fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+                r.ingredientes.forEach { ingrediente ->
+                    Row(Modifier.fillMaxWidth()) {
+                        Text(ingrediente.nombre, fontSize = 14.sp, modifier = Modifier.weight(1f))
+                        Text(ingrediente.medida, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
 
-            Text("Preparación", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            r.pasos.forEachIndexed { i, paso ->
-                Text("${i + 1}. $paso")
+            // Preparación
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("Preparación", fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+                r.pasos.forEachIndexed { i, paso ->
+                    Text("${i + 1}. $paso", fontSize = 14.sp)
+                }
             }
         }
 
-        // Botón fijo abajo
-        Button(
+        // Botón fijo abajo con Chef Teo
+        Surface(
             onClick = { onCocinar(r.id) },
+            shape = RoundedCornerShape(50),
+            color = RosaCoral,
+            contentColor = CafeOscuro,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
+                .padding(20.dp)
                 .fillMaxWidth()
-                .padding(16.dp),
-            shape = RoundedCornerShape(50)
+                .height(56.dp)
         ) {
-            Text("🐭 Cocinar con Chef Teo", fontWeight = FontWeight.Bold)
+            Row(
+                modifier = Modifier.fillMaxSize(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                ChefTeoImagen(Modifier.size(width = 30.dp, height = 38.dp))
+                Spacer(Modifier.width(10.dp))
+                Text("Cocinar con Chef Teo", fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+            }
         }
+    }
+}
+
+@Composable
+private fun BotonCircular(
+    onClick: () -> Unit,
+    fondo: Color = Blanco,
+    contenido: @Composable () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        shape = CircleShape,
+        color = fondo,
+        contentColor = CafeOscuro,
+        modifier = Modifier.size(44.dp)
+    ) {
+        Box(contentAlignment = Alignment.Center) { contenido() }
     }
 }
 
@@ -147,7 +212,8 @@ private fun Etiqueta(texto: String, color: Color) {
         modifier = Modifier
             .background(color, RoundedCornerShape(50))
             .padding(horizontal = 12.dp, vertical = 4.dp),
-        style = MaterialTheme.typography.labelLarge
+        fontSize = 13.sp,
+        fontWeight = FontWeight.Bold
     )
 }
 
@@ -156,10 +222,10 @@ private fun DatoNutricional(valor: String, etiqueta: String, color: Color, modif
     Column(
         modifier = modifier
             .background(color, RoundedCornerShape(20.dp))
-            .padding(16.dp),
+            .padding(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(valor, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-        Text(etiqueta, style = MaterialTheme.typography.bodySmall)
+        Text(valor, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        Text(etiqueta, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
     }
 }

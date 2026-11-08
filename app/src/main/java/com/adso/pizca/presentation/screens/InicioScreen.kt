@@ -1,10 +1,13 @@
 package com.adso.pizca.presentation.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -16,8 +19,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.adso.pizca.data.dto.Receta
+import com.adso.pizca.presentation.components.ChefTeoImagen
+import com.adso.pizca.presentation.components.IconoReceta
 import com.adso.pizca.presentation.viewmodel.InicioViewModel
 import com.adso.pizca.ui.theme.AzulCielo
+import com.adso.pizca.ui.theme.Blanco
+import com.adso.pizca.ui.theme.CafeOscuro
+import com.adso.pizca.ui.theme.Crema
 import com.adso.pizca.ui.theme.Durazno
 import com.adso.pizca.ui.theme.RosaCoral
 
@@ -31,38 +39,48 @@ fun InicioScreen(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp)
     ) {
+        // 1. Saludo con Chef Teo
+        item { BannerSaludo() }
+
+        // 2. Categorías (bajan de línea si no caben)
         item {
-            Text("¡Hola, chef! 🐭", style = MaterialTheme.typography.labelLarge)
-            Text(
-                "¿Qué cocinamos hoy?",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold
-            )
-        }
-        item {
-            Text("Categorías", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(8.dp))
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(viewModel.categorias) { categoria ->
-                    FilterChip(
-                        selected = categoria == seleccionada,
-                        onClick = { viewModel.seleccionarCategoria(categoria) },
-                        label = { Text(categoria) },
-                        shape = RoundedCornerShape(50),
-                        colors = FilterChipDefaults.filterChipColors(
-                            containerColor = AzulCielo,
-                            selectedContainerColor = RosaCoral
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("Categorías", fontSize = 19.sp, fontWeight = FontWeight.SemiBold)
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    viewModel.categorias.forEach { categoria ->
+                        ChipCategoria(
+                            texto = categoria,
+                            seleccionado = categoria == seleccionada,
+                            onClick = { viewModel.seleccionarCategoria(categoria) }
                         )
-                    )
+                    }
                 }
             }
         }
+
+        // 3. Título de la lista con el conteo
         item {
-            Text("Recetas recomendadas", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Recetas recomendadas", fontSize = 19.sp, fontWeight = FontWeight.SemiBold)
+                Text(
+                    if (recetas.size == 1) "1 receta" else "${recetas.size} recetas",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
         }
+
+        // 4. Tarjetas de recetas
         items(recetas, key = { it.id }) { receta ->
             TarjetaReceta(receta = receta, onClick = { onRecetaClick(receta.id) })
         }
@@ -70,23 +88,74 @@ fun InicioScreen(
 }
 
 @Composable
+private fun BannerSaludo() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Crema, RoundedCornerShape(28.dp))
+            .padding(start = 20.dp, top = 18.dp, bottom = 18.dp, end = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(
+                "¡HOLA, CHEF!",
+                modifier = Modifier
+                    .background(RosaCoral, RoundedCornerShape(50))
+                    .padding(horizontal = 12.dp, vertical = 4.dp),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.5.sp
+            )
+            Text("¿Qué cocinamos hoy?", fontSize = 28.sp, lineHeight = 31.sp, fontWeight = FontWeight.Bold)
+            Text("Elige una categoría o una receta.", fontSize = 14.sp)
+        }
+        Box(
+            modifier = Modifier.size(92.dp).background(Blanco, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            ChefTeoImagen(Modifier.size(width = 70.dp, height = 90.dp))
+        }
+    }
+}
+
+@Composable
+private fun ChipCategoria(texto: String, seleccionado: Boolean, onClick: () -> Unit) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(50),
+        color = if (seleccionado) RosaCoral else AzulCielo,
+        contentColor = CafeOscuro
+    ) {
+        Box(
+            modifier = Modifier.heightIn(min = 44.dp).padding(horizontal = 16.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(texto, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
 private fun TarjetaReceta(receta: Receta, onClick: () -> Unit) {
-    Card(
+    Surface(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Durazno)
+        shape = RoundedCornerShape(22.dp),
+        color = Durazno,
+        contentColor = CafeOscuro
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Text(receta.emoji, fontSize = 40.sp)
-            Spacer(Modifier.width(16.dp))
-            Column(Modifier.weight(1f)) {
-                Text(receta.nombre, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text("${receta.pais} · ${receta.categoria}", style = MaterialTheme.typography.bodyMedium)
+            IconoReceta(receta.categoria)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(receta.nombre, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+                Text("${receta.pais} · ${receta.categoria}", fontSize = 13.sp)
             }
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
         }
     }
 }
