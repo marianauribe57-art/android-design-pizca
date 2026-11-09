@@ -1,5 +1,8 @@
 package com.adso.pizca.presentation
 
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Home
@@ -49,7 +52,10 @@ fun PizcaApp() {
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
             if (mostrarBarra) {
-                NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
+                NavigationBar(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    modifier = Modifier.clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+                ) {
                     Pestana.entries.forEach { pestana ->
                         val seleccionada =
                             destinoActual?.hierarchy?.any { it.hasRoute(pestana.clase) } == true
