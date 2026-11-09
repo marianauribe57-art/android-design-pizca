@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.adso.pizca.presentation.components.ChefTeoImagen
+import com.adso.pizca.presentation.components.StatCard
 import com.adso.pizca.presentation.viewmodel.DetalleViewModel
 import com.adso.pizca.ui.theme.AzulCielo
 import com.adso.pizca.ui.theme.Blanco
@@ -137,10 +138,10 @@ fun DetalleScreen(
                 }
             }
 
-            // Valores nutricionales
+            // Valores nutricionales (componente reutilizable)
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                DatoNutricional("${viewModel.calorias(r, raciones)}", "kcal", RosaCoral, Modifier.weight(1f))
-                DatoNutricional("${viewModel.proteinas(r, raciones)} g", "proteína", Menta, Modifier.weight(1f))
+                StatCard("${viewModel.calorias(r, raciones)}", "kcal", RosaCoral, Modifier.weight(1f))
+                StatCard("${viewModel.proteinas(r, raciones)} g", "proteína", Menta, Modifier.weight(1f))
             }
 
             // Ingredientes
@@ -215,17 +216,4 @@ private fun Etiqueta(texto: String, color: Color) {
         fontSize = 13.sp,
         fontWeight = FontWeight.Bold
     )
-}
-
-@Composable
-private fun DatoNutricional(valor: String, etiqueta: String, color: Color, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier
-            .background(color, RoundedCornerShape(20.dp))
-            .padding(12.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(valor, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-        Text(etiqueta, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-    }
 }
