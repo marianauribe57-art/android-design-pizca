@@ -25,7 +25,7 @@
 |---|---|
 | Mariana Uribe Muñoz | Líder del repositorio, GitHub Flow y proyecto base |
 | Valeria Usuga | Modelado de datos y arquitectura |
-| Ismael Mira | Diseño UI/UX en Google Stitch |
+| Ismael Mira | Diseño de pantallas en Claude Design |
 
 ---
 
@@ -129,8 +129,7 @@ erDiagram
 
 ## 🎨 Hito 3: Diseño de pantallas y navegación
 
-🔗 **Prototipo en Google Stitch:** https://stitch.withgoogle.com/projects/13684901120045225553
-
+🔗**Diseño de pantallas:** hecho en Claude Design.
 **Estilo visual:** caricatura, paleta pastel (rosa coral `#FFADAD`, durazno `#FFD6A5`, crema `#FDFFB6`, menta `#CAFFBF`, azul cielo `#A0C4FF`), texto café oscuro `#4A3B3B`, tipografías **Fredoka** (títulos) y **Nunito** (textos). La mascota es **Chef Teo**, un ratoncito con gorro de chef y delantal rojo, diseño propio del equipo.
 
 ### Pantalla 1 — Inicio
@@ -238,11 +237,11 @@ flowchart LR
 
 🔗 **Video:** [Ver video de presentación](https://drive.google.com/file/d/1hSqCkEyFbiReyu0WETBN95fRdOllDmlM/view?usp=sharing)
 
-| Integrante | Parte que presenta |
-|---|---|
-| Mariana Uribe Muñoz | Idea, APIs y proyecto base |
-| Valeria Usuga | Diagrama ER y arquitectura MVVM |
-| Ismael Mira | Diseño de pantallas en Google Stitch |
+| Integrante | Parte que presenta                   |
+|---|--------------------------------------|
+| Mariana Uribe Muñoz | Idea, APIs y proyecto base           |
+| Valeria Usuga | Diagrama ER y arquitectura MVVM      |
+| Ismael Mira | Diseño de pantallas en Claude Design |
 
 ---
 
