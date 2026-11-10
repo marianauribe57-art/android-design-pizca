@@ -1,9 +1,8 @@
-package com.adso.pizca.presentation
 
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.unit.dp
+package com.adso.pizca.presentation.navigation
+
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Person
@@ -13,10 +12,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -29,24 +31,21 @@ import kotlin.reflect.KClass
 enum class Pestana(
     val titulo: String,
     val icono: ImageVector,
-    val ruta: Any,
+    val ruta: Destination,
     val clase: KClass<*>
 ) {
-    INICIO("Inicio", Icons.Outlined.Home, InicioRuta, InicioRuta::class),
-    BUSCAR("Buscar", Icons.Outlined.Search, BusquedaRuta, BusquedaRuta::class),
-    CHEF("Chef", Icons.Outlined.RestaurantMenu, ChefRuta(), ChefRuta::class),
-    PERFIL("Perfil", Icons.Outlined.Person, PerfilRuta, PerfilRuta::class)
+    INICIO("Inicio", Icons.Outlined.Home, Destination.Inicio, Destination.Inicio::class),
+    BUSCAR("Buscar", Icons.Outlined.Search, Destination.Busqueda, Destination.Busqueda::class),
+    CHEF("Chef", Icons.Outlined.RestaurantMenu, Destination.Chef(), Destination.Chef::class),
+    PERFIL("Perfil", Icons.Outlined.Person, Destination.Perfil, Destination.Perfil::class)
 }
 
 @Composable
-fun PizcaApp() {
-    // 1. El "GPS" de la app
-    val navController = rememberNavController()
-
-    // 2. Saber en qué pantalla estamos (para marcar la pestaña y ocultar la barra)
+fun AppNavigation(navController: NavHostController = rememberNavController()) {
+    // Saber en qué pantalla estamos (para marcar la pestaña y ocultar la barra)
     val entradaActual by navController.currentBackStackEntryAsState()
     val destinoActual = entradaActual?.destination
-    val mostrarBarra = destinoActual?.hasRoute(DetalleRuta::class) != true
+    val mostrarBarra = destinoActual?.hasRoute(Destination.Detalle::class) != true
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -82,28 +81,30 @@ fun PizcaApp() {
             }
         }
     ) { padding ->
-        // 3. El mapa de pantallas: cada ruta con su pantalla
+        // El mapa de pantallas: cada ruta con su pantalla
         NavHost(
             navController = navController,
-            startDestination = InicioRuta,
+            startDestination = Destination.Inicio,
             modifier = Modifier.padding(padding)
         ) {
-            composable<InicioRuta> {
-                InicioScreen(onRecetaClick = { id -> navController.navigate(DetalleRuta(id)) })
+            // Pantalla 1: Inicio
+            composable<Destination.Inicio> {
+                InicioScreen(onRecetaClick = { id -> navController.navigate(Destination.Detalle(id)) })
             }
 
-            composable<BusquedaRuta> {
-                BusquedaScreen(onRecetaClick = { id -> navController.navigate(DetalleRuta(id)) })
+            // Pantalla 2: Búsqueda
+            composable<Destination.Busqueda> {
+                BusquedaScreen(onRecetaClick = { id -> navController.navigate(Destination.Detalle(id)) })
             }
 
-            composable<DetalleRuta> { entrada ->
-                // toRoute() recupera el recetaId que viajó en la ruta
-                val ruta: DetalleRuta = entrada.toRoute()
+            // Pantalla 3: Detalle (recibe el recetaId con toRoute)
+            composable<Destination.Detalle> { entrada ->
+                val ruta: Destination.Detalle = entrada.toRoute()
                 DetalleScreen(
                     recetaId = ruta.recetaId,
                     onVolver = { navController.popBackStack() },
                     onCocinar = { id ->
-                        navController.navigate(ChefRuta(id)) {
+                        navController.navigate(Destination.Chef(id)) {
                             popUpTo(navController.graph.findStartDestination().id) {
                                 saveState = true
                             }
@@ -113,12 +114,14 @@ fun PizcaApp() {
                 )
             }
 
-            composable<ChefRuta> { entrada ->
-                val ruta: ChefRuta = entrada.toRoute()
+            // Pantalla 4: Chef Teo (recetaId opcional)
+            composable<Destination.Chef> { entrada ->
+                val ruta: Destination.Chef = entrada.toRoute()
                 ChefScreen(recetaId = ruta.recetaId)
             }
 
-            composable<PerfilRuta> {
+            // Pantalla 5: Perfil
+            composable<Destination.Perfil> {
                 PerfilScreen()
             }
         }

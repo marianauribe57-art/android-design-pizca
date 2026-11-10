@@ -6,8 +6,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -18,15 +16,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.adso.pizca.data.dto.Receta
 import com.adso.pizca.presentation.components.ChefTeoImagen
-import com.adso.pizca.presentation.components.IconoReceta
+import com.adso.pizca.presentation.components.ChipPildora
+import com.adso.pizca.presentation.components.RecetaCard
 import com.adso.pizca.presentation.viewmodel.InicioViewModel
 import com.adso.pizca.ui.theme.AzulCielo
 import com.adso.pizca.ui.theme.Blanco
-import com.adso.pizca.ui.theme.CafeOscuro
 import com.adso.pizca.ui.theme.Crema
-import com.adso.pizca.ui.theme.Durazno
 import com.adso.pizca.ui.theme.RosaCoral
 
 @Composable
@@ -54,9 +50,10 @@ fun InicioScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     viewModel.categorias.forEach { categoria ->
-                        ChipCategoria(
+                        ChipPildora(
                             texto = categoria,
                             seleccionado = categoria == seleccionada,
+                            colorNormal = AzulCielo,
                             onClick = { viewModel.seleccionarCategoria(categoria) }
                         )
                     }
@@ -80,9 +77,9 @@ fun InicioScreen(
             }
         }
 
-        // 4. Tarjetas de recetas
+        // 4. Tarjetas de recetas (componente reutilizable)
         items(recetas, key = { it.id }) { receta ->
-            TarjetaReceta(receta = receta, onClick = { onRecetaClick(receta.id) })
+            RecetaCard(receta = receta, onClick = { onRecetaClick(receta.id) })
         }
     }
 }
@@ -115,47 +112,6 @@ private fun BannerSaludo() {
             contentAlignment = Alignment.Center
         ) {
             ChefTeoImagen(Modifier.size(width = 70.dp, height = 90.dp))
-        }
-    }
-}
-
-@Composable
-private fun ChipCategoria(texto: String, seleccionado: Boolean, onClick: () -> Unit) {
-    Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(50),
-        color = if (seleccionado) RosaCoral else AzulCielo,
-        contentColor = CafeOscuro
-    ) {
-        Box(
-            modifier = Modifier.heightIn(min = 44.dp).padding(horizontal = 16.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(texto, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-        }
-    }
-}
-
-@Composable
-private fun TarjetaReceta(receta: Receta, onClick: () -> Unit) {
-    Surface(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(22.dp),
-        color = Durazno,
-        contentColor = CafeOscuro
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            IconoReceta(receta.categoria)
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(receta.nombre, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
-                Text("${receta.pais} · ${receta.categoria}", fontSize = 13.sp)
-            }
-            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
         }
     }
 }
