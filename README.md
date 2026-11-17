@@ -14,7 +14,8 @@
 5. [Arquitectura y endpoints](#-hito-4-arquitectura-y-consumo-de-las-apis)
 6. [Proyecto base](#-hito-5-proyecto-base-en-android-studio)
 7. [Video de presentación](#-hito-6-video-de-presentación)
-8. [Flujo de trabajo en GitHub](#-flujo-de-trabajo-github-flow)
+8. [Navegación Type-Safe](#-navegación-type-safe)
+9. [Flujo de trabajo en GitHub](#-flujo-de-trabajo-github-flow)
 
 ---
 
@@ -24,7 +25,7 @@
 |---|---|
 | Mariana Uribe Muñoz | Líder del repositorio, GitHub Flow y proyecto base |
 | Valeria Usuga | Modelado de datos y arquitectura |
-| Ismael Mira | Diseño UI/UX en Google Stitch |
+| Ismael Mira | Diseño de pantallas en Claude Design |
 
 ---
 
@@ -128,8 +129,7 @@ erDiagram
 
 ## 🎨 Hito 3: Diseño de pantallas y navegación
 
-🔗 **Prototipo en Google Stitch:** https://stitch.withgoogle.com/projects/13684901120045225553
-
+🔗**Diseño de pantallas:** hecho en Claude Design.
 **Estilo visual:** caricatura, paleta pastel (rosa coral `#FFADAD`, durazno `#FFD6A5`, crema `#FDFFB6`, menta `#CAFFBF`, azul cielo `#A0C4FF`), texto café oscuro `#4A3B3B`, tipografías **Fredoka** (títulos) y **Nunito** (textos). La mascota es **Chef Teo**, un ratoncito con gorro de chef y delantal rojo, diseño propio del equipo.
 
 ### Pantalla 1 — Inicio
@@ -174,18 +174,6 @@ erDiagram
 - **Muestra:** datos del usuario (peso, estatura, edad, sexo), objetivo y meta diaria de calorías y proteínas.
 - **Datos:** cálculo local con fórmula de gasto energético; el perfil se guarda en **DataStore**. No consume API.
 - **Acciones:** editar datos, elegir objetivo (bajar de peso, mantenerse, ganar músculo) y ver el plato recomendado.
-
-### Flujo de navegación
-
-```mermaid
-flowchart LR
-    INICIO[Inicio] -- idMeal --> DETALLE[Detalle de receta]
-    BUSQUEDA[Búsqueda] -- idMeal --> DETALLE
-    DETALLE -- idMeal --> CHEF[Chef Teo]
-    INICIO <-. barra inferior .-> BUSQUEDA
-    INICIO <-. barra inferior .-> CHEF
-    INICIO <-. barra inferior .-> PERFIL[Mi perfil]
-```
 
 La barra inferior conecta **Inicio, Buscar, Chef y Perfil**. El dato que viaja entre pantallas es el `idMeal` de la receta seleccionada.
 
@@ -249,13 +237,45 @@ flowchart LR
 
 🔗 **Video:** [Ver video de presentación](https://drive.google.com/file/d/1hSqCkEyFbiReyu0WETBN95fRdOllDmlM/view?usp=sharing)
 
-| Integrante | Parte que presenta |
-|---|---|
-| Mariana Uribe Muñoz | Idea, APIs y proyecto base |
-| Valeria Usuga | Diagrama ER y arquitectura MVVM |
-| Ismael Mira | Diseño de pantallas en Google Stitch |
+| Integrante | Parte que presenta                   |
+|---|--------------------------------------|
+| Mariana Uribe Muñoz | Idea, APIs y proyecto base           |
+| Valeria Usuga | Diagrama ER y arquitectura MVVM      |
+| Ismael Mira | Diseño de pantallas en Claude Design |
 
 ---
+
+## 🧭 Navegación (Type-Safe)
+
+La app usa la navegación oficial de Jetpack Compose con rutas `@Serializable`. Todo vive en `presentation/navigation/`:
+
+- **Destinations.kt**: todas las rutas agrupadas en `sealed interface Destination`.
+- **AppNavigation.kt**: la barra inferior y el `NavHost`.
+
+- **NavController**: el "GPS" de la app. Guarda la pila de pantallas y hace los cambios.
+- **NavHost**: el mapa que une cada ruta con su pantalla.
+- **composable<Destination.X>**: registra una pantalla en el mapa.
+- **toRoute()**: recupera los datos que viajan en la ruta (por ejemplo, el `recetaId`).
+
+### Rutas
+
+| Ruta | Tipo | Datos que lleva | Pantalla |
+|---|---|---|---|
+| `Destination.Inicio` | data object | — | InicioScreen |
+| `Destination.Busqueda` | data object | — | BusquedaScreen |
+| `Destination.Perfil` | data object | — | PerfilScreen |
+| `Destination.Detalle` | data class | `recetaId: String` | DetalleScreen |
+| `Destination.Chef` | data class | `recetaId: String?` (opcional) | ChefScreen |
+
+### Flujo
+
+<img src="docs/capturas/flujo-pizca.png" width="600" alt="Diagrama de flujo de navegación">
+
+- Las pantallas no reciben el `NavController`: reciben eventos como `onRecetaClick` y `onVolver`.
+- La barra inferior usa `popUpTo`, `launchSingleTop` y `restoreState` para no repetir pantallas y recordar cada pestaña.
+- En el Detalle se oculta la barra inferior.
+
+📘 **Arquitectura completa, archivo por archivo:** [docs/tutorial_arquitectura.md](docs/tutorial_arquitectura.md)
 
 ## 🔀 Flujo de trabajo (GitHub Flow)
 
