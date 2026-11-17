@@ -247,41 +247,35 @@ flowchart LR
 
 ## 🧭 Navegación (Type-Safe)
 
-La app usa la navegación oficial de Jetpack Compose con rutas `@Serializable`:
+La app usa la navegación oficial de Jetpack Compose con rutas `@Serializable`. Todo vive en `presentation/navigation/`:
+
+- **Destinations.kt**: todas las rutas agrupadas en `sealed interface Destination`.
+- **AppNavigation.kt**: la barra inferior y el `NavHost`.
 
 - **NavController**: el "GPS" de la app. Guarda la pila de pantallas y hace los cambios.
 - **NavHost**: el mapa que une cada ruta con su pantalla.
-- **composable<Ruta>**: registra una pantalla en el mapa.
+- **composable<Destination.X>**: registra una pantalla en el mapa.
 - **toRoute()**: recupera los datos que viajan en la ruta (por ejemplo, el `recetaId`).
 
 ### Rutas
 
 | Ruta | Tipo | Datos que lleva | Pantalla |
 |---|---|---|---|
-| `InicioRuta` | object | — | InicioScreen |
-| `BusquedaRuta` | object | — | BusquedaScreen |
-| `PerfilRuta` | object | — | PerfilScreen |
-| `DetalleRuta` | data class | `recetaId: String` | DetalleScreen |
-| `ChefRuta` | data class | `recetaId: String?` (opcional) | ChefScreen |
+| `Destination.Inicio` | data object | — | InicioScreen |
+| `Destination.Busqueda` | data object | — | BusquedaScreen |
+| `Destination.Perfil` | data object | — | PerfilScreen |
+| `Destination.Detalle` | data class | `recetaId: String` | DetalleScreen |
+| `Destination.Chef` | data class | `recetaId: String?` (opcional) | ChefScreen |
 
 ### Flujo
-
-```mermaid
-flowchart LR
-    I[InicioRuta] -- "navigate(DetalleRuta(id))" --> D[DetalleRuta]
-    B[BusquedaRuta] -- "navigate(DetalleRuta(id))" --> D
-    D -- "navigate(ChefRuta(id))" --> C[ChefRuta]
-    D -- popBackStack --> I
-    I <-. barra inferior .-> B
-    I <-. barra inferior .-> C
-    I <-. barra inferior .-> P[PerfilRuta]
-```
 
 <img src="docs/capturas/flujo-pizca.png" width="600" alt="Diagrama de flujo de navegación">
 
 - Las pantallas no reciben el `NavController`: reciben eventos como `onRecetaClick` y `onVolver`.
 - La barra inferior usa `popUpTo`, `launchSingleTop` y `restoreState` para no repetir pantallas y recordar cada pestaña.
 - En el Detalle se oculta la barra inferior.
+
+📘 **Arquitectura completa, archivo por archivo:** [docs/tutorial_arquitectura.md](docs/tutorial_arquitectura.md)
 
 ## 🔀 Flujo de trabajo (GitHub Flow)
 
