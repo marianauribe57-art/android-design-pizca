@@ -24,6 +24,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.adso.pizca.data.dto.Objetivo
+import com.adso.pizca.presentation.components.ChipPildora
+import com.adso.pizca.presentation.components.StatCard
 import com.adso.pizca.presentation.viewmodel.PerfilViewModel
 import com.adso.pizca.ui.theme.Blanco
 import com.adso.pizca.ui.theme.CafeOscuro
@@ -79,8 +81,8 @@ fun PerfilScreen(viewModel: PerfilViewModel = viewModel()) {
             CampoNumero(edad, { edad = it }, "Edad", KeyboardType.Number, Modifier.weight(1f))
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            ChipOpcion("Mujer", esMujer) { esMujer = true }
-            ChipOpcion("Hombre", !esMujer) { esMujer = false }
+            ChipPildora("Mujer", esMujer) { esMujer = true }
+            ChipPildora("Hombre", !esMujer) { esMujer = false }
         }
 
         // Objetivo (baja de línea si no cabe)
@@ -90,7 +92,7 @@ fun PerfilScreen(viewModel: PerfilViewModel = viewModel()) {
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Objetivo.entries.forEach { o ->
-                ChipOpcion(o.titulo, objetivo == o) { objetivo = o }
+                ChipPildora(o.titulo, objetivo == o) { objetivo = o }
             }
         }
 
@@ -109,8 +111,8 @@ fun PerfilScreen(viewModel: PerfilViewModel = viewModel()) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Mi meta diaria", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    TarjetaMeta("${m.calorias}", "kcal al día", RosaCoral, Modifier.weight(1f))
-                    TarjetaMeta("${m.proteinas} g", "proteína al día", Menta, Modifier.weight(1f))
+                    StatCard("${m.calorias}", "kcal al día", RosaCoral, Modifier.weight(1f), tamanoValor = 26.sp)
+                    StatCard("${m.proteinas} g", "proteína al día", Menta, Modifier.weight(1f), tamanoValor = 26.sp)
                 }
                 Column(
                     modifier = Modifier
@@ -158,36 +160,6 @@ private fun CampoNumero(
             keyboardOptions = KeyboardOptions(keyboardType = teclado),
             modifier = Modifier.fillMaxWidth().heightIn(min = 28.dp)
         )
-    }
-}
-
-@Composable
-private fun ChipOpcion(texto: String, seleccionado: Boolean, onClick: () -> Unit) {
-    Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(50),
-        color = if (seleccionado) RosaCoral else Blanco,
-        contentColor = CafeOscuro
-    ) {
-        Box(
-            modifier = Modifier.heightIn(min = 44.dp).padding(horizontal = 16.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(texto, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-        }
-    }
-}
-
-@Composable
-private fun TarjetaMeta(valor: String, etiqueta: String, color: Color, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier
-            .background(color, RoundedCornerShape(20.dp))
-            .padding(14.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(valor, fontSize = 26.sp, fontWeight = FontWeight.Bold)
-        Text(etiqueta, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 
