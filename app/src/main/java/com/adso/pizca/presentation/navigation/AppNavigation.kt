@@ -121,7 +121,7 @@ fun AppNavigation(navController: NavHostController = rememberNavController()) {
 
             // Pantalla 5: Perfil
             composable<Destination.Perfil> {
-                PerfilScreen()
+                PerfilScreen(onRecetaClick = { id -> navController.navigate(Destination.Detalle(id)) })
             }
         }
     }
