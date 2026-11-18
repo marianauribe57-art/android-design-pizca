@@ -2,14 +2,14 @@ package com.adso.pizca.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import com.adso.pizca.data.dto.Receta
-import com.adso.pizca.data.repository.RecetaRepository
+import com.adso.pizca.data.repository.RecetasDeEjemplo
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 class InicioViewModel : ViewModel() {
 
-    private val todas = RecetaRepository.obtenerRecetas()
+    private val todas = RecetasDeEjemplo.obtenerRecetas()
 
     // Las categorías salen de las recetas, sin repetir
     val categorias: List<String> = todas.map { it.categoria }.distinct()

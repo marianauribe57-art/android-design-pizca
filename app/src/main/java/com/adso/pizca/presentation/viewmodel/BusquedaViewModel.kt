@@ -2,7 +2,7 @@ package com.adso.pizca.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import com.adso.pizca.data.dto.Receta
-import com.adso.pizca.data.repository.RecetaRepository
+import com.adso.pizca.data.repository.RecetasDeEjemplo
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,7 +16,7 @@ enum class ModoBusqueda(val titulo: String) {
 
 class BusquedaViewModel : ViewModel() {
 
-    private val todas = RecetaRepository.obtenerRecetas()
+    private val todas = RecetasDeEjemplo.obtenerRecetas()
 
     private val _modo = MutableStateFlow(ModoBusqueda.NOMBRE)
     val modo: StateFlow<ModoBusqueda> = _modo.asStateFlow()
