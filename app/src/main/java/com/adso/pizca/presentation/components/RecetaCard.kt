@@ -39,7 +39,8 @@ fun RecetaCard(
             IconoReceta(receta.categoria)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(receta.nombre, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
-                Text("${receta.pais} · ${receta.categoria}", fontSize = 13.sp)
+                val detalle = listOf(receta.pais, receta.categoria).filter { it.isNotBlank() }.joinToString(" · ")
+                if (detalle.isNotEmpty()) Text(detalle, fontSize = 13.sp)
             }
             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
         }

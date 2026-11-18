@@ -28,7 +28,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.adso.pizca.data.dto.Receta
+import com.adso.pizca.presentation.components.Cargando          // NUEVO
 import com.adso.pizca.presentation.components.ChefTeoImagen
+import com.adso.pizca.presentation.components.ChipPildora       // NUEVO
+import com.adso.pizca.presentation.components.ErrorCard         // NUEVO
 import com.adso.pizca.presentation.components.IconoReceta
 import com.adso.pizca.presentation.viewmodel.BusquedaViewModel
 import com.adso.pizca.presentation.viewmodel.ModoBusqueda
@@ -49,11 +52,15 @@ fun BusquedaScreen(
     val texto by viewModel.texto.collectAsState()
     val ingredientes by viewModel.ingredientes.collectAsState()
     val resultados by viewModel.resultados.collectAsState()
+    val paises by viewModel.paises.collectAsState()                     // NUEVO
+    val paisSeleccionado by viewModel.paisSeleccionado.collectAsState() // NUEVO
+    val isLoading by viewModel.isLoading.collectAsState()               // NUEVO
+    val errorMessage by viewModel.errorMessage.collectAsState()         // NUEVO
 
     val etiqueta = when (modo) {
         ModoBusqueda.NOMBRE -> "Nombre de la receta"
         ModoBusqueda.INGREDIENTES -> "Escribe un ingrediente y toca +"
-        ModoBusqueda.PAIS -> "País"
+        ModoBusqueda.PAIS -> ""          // en modo país no hay campo de texto
     }
 
     Column(
@@ -62,45 +69,62 @@ fun BusquedaScreen(
     ) {
         Text("Buscar recetas", fontSize = 26.sp, fontWeight = FontWeight.Bold)
 
-        // Buscador blanco tipo píldora
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 52.dp)
-                .background(Blanco, RoundedCornerShape(50))
-                .padding(start = 16.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Icon(Icons.Outlined.Search, contentDescription = null, modifier = Modifier.size(20.dp))
-            BasicTextField(
-                value = texto,
-                onValueChange = { viewModel.cambiarTexto(it) },
-                singleLine = true,
-                textStyle = TextStyle(fontSize = 15.sp, color = CafeOscuro),
-                cursorBrush = SolidColor(CafeOscuro),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = {
-                    if (modo == ModoBusqueda.INGREDIENTES) viewModel.agregarIngrediente()
-                }),
-                modifier = Modifier.weight(1f),
-                decorationBox = { campo ->
-                    Box(contentAlignment = Alignment.CenterStart) {
-                        if (texto.isEmpty()) Text(etiqueta, fontSize = 15.sp, color = TextoSuave)
-                        campo()
-                    }
+        // CAMBIA: en modo país se eligen chips; en los otros, el buscador de siempre
+        if (modo == ModoBusqueda.PAIS) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                paises.forEach { pais ->
+                    ChipPildora(
+                        texto = pais,
+                        seleccionado = pais == paisSeleccionado,
+                        colorNormal = Menta,
+                        onClick = { viewModel.seleccionarPais(pais) }
+                    )
                 }
-            )
-            if (modo == ModoBusqueda.INGREDIENTES) {
-                Surface(
-                    onClick = { viewModel.agregarIngrediente() },
-                    shape = CircleShape,
-                    color = RosaCoral,
-                    contentColor = CafeOscuro,
-                    modifier = Modifier.size(44.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Outlined.Add, contentDescription = "Agregar ingrediente")
+            }
+        } else {
+            // Buscador blanco tipo píldora (igual que antes)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 52.dp)
+                    .background(Blanco, RoundedCornerShape(50))
+                    .padding(start = 16.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Icon(Icons.Outlined.Search, contentDescription = null, modifier = Modifier.size(20.dp))
+                BasicTextField(
+                    value = texto,
+                    onValueChange = { viewModel.cambiarTexto(it) },
+                    singleLine = true,
+                    textStyle = TextStyle(fontSize = 15.sp, color = CafeOscuro),
+                    cursorBrush = SolidColor(CafeOscuro),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = {
+                        if (modo == ModoBusqueda.INGREDIENTES) viewModel.agregarIngrediente()
+                    }),
+                    modifier = Modifier.weight(1f),
+                    decorationBox = { campo ->
+                        Box(contentAlignment = Alignment.CenterStart) {
+                            if (texto.isEmpty()) Text(etiqueta, fontSize = 15.sp, color = TextoSuave)
+                            campo()
+                        }
+                    }
+                )
+                if (modo == ModoBusqueda.INGREDIENTES) {
+                    Surface(
+                        onClick = { viewModel.agregarIngrediente() },
+                        shape = CircleShape,
+                        color = RosaCoral,
+                        contentColor = CafeOscuro,
+                        modifier = Modifier.size(44.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Outlined.Add, contentDescription = "Agregar ingrediente")
+                        }
                     }
                 }
             }
@@ -128,32 +152,40 @@ fun BusquedaScreen(
             }
         }
 
-        // Mensaje de Chef Teo
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Durazno, RoundedCornerShape(22.dp))
-                .padding(horizontal = 14.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            ChefTeoImagen(Modifier.size(width = 40.dp, height = 52.dp))
-            Text(
-                if (resultados.isEmpty()) "Mmm… no encontré recetas. ¡Prueba con otra palabra!"
-                else "¡Encontré ${resultados.size} receta(s) para ti!",
-                fontSize = 15.sp,
-                fontWeight = FontWeight.SemiBold
-            )
-        }
+        // CAMBIA: cargando, error o (mensaje de Teo + resultados)
+        val error = errorMessage            // copia local para que Kotlin sepa que no es null
+        when {
+            isLoading -> Cargando()
+            error != null -> ErrorCard(error, onReintentar = { viewModel.actualizarResultados() })
+            else -> {
+                // Mensaje de Chef Teo
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Durazno, RoundedCornerShape(22.dp))
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    ChefTeoImagen(Modifier.size(width = 40.dp, height = 52.dp))
+                    Text(
+                        if (resultados.isEmpty()) "Mmm… no encontré recetas. ¡Prueba con otra palabra!"
+                        else "¡Encontré ${resultados.size} receta(s) para ti!",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
 
-        // Resultados
-        LazyColumn(
-            modifier = Modifier.weight(1f),
-            contentPadding = PaddingValues(bottom = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            items(resultados, key = { it.id }) { receta ->
-                FilaResultado(receta = receta, onClick = { onRecetaClick(receta.id) })
+                // Resultados
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(bottom = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    items(resultados, key = { it.id }) { receta ->
+                        FilaResultado(receta = receta, onClick = { onRecetaClick(receta.id) })
+                    }
+                }
             }
         }
     }
