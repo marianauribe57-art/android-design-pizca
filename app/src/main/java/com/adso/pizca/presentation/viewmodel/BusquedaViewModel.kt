@@ -3,7 +3,7 @@ package com.adso.pizca.presentation.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.adso.pizca.data.dto.Receta
-import com.adso.pizca.data.repository.FakeRecetaRepository
+import com.adso.pizca.data.repository.RecetaRepositoryImpl
 import com.adso.pizca.data.repository.RecetaRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -21,7 +21,7 @@ enum class ModoBusqueda(val titulo: String) {
 }
 
 class BusquedaViewModel(
-    private val repository: RecetaRepository = FakeRecetaRepository()   // Fase 2: RecetaRepositoryImpl()
+    private val repository: RecetaRepository = RecetaRepositoryImpl()
 ) : ViewModel() {
 
     private val _modo = MutableStateFlow(ModoBusqueda.NOMBRE)

@@ -3,8 +3,8 @@ package com.adso.pizca.presentation.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.adso.pizca.data.dto.Receta
-import com.adso.pizca.data.repository.FakeFavoritaRepository
-import com.adso.pizca.data.repository.FakeRecetaRepository
+import com.adso.pizca.data.repository.RecetaRepositoryImpl
+import com.adso.pizca.data.repository.FavoritaRepositoryImpl
 import com.adso.pizca.data.repository.FavoritaRepository
 import com.adso.pizca.data.repository.RecetaRepository
 import kotlinx.coroutines.Job
@@ -14,8 +14,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class DetalleViewModel(
-    private val recetaRepository: RecetaRepository = FakeRecetaRepository(),          // Fase 2: RecetaRepositoryImpl()
-    private val favoritaRepository: FavoritaRepository = FakeFavoritaRepository()     // Fase 2: FavoritaRepositoryImpl()
+    private val recetaRepository: RecetaRepository = RecetaRepositoryImpl(),
+    private val favoritaRepository: FavoritaRepository = FavoritaRepositoryImpl()
 ) : ViewModel() {
 
     // Las recetas de ejemplo rinden 4 raciones

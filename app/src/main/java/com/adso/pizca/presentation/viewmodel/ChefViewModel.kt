@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.adso.pizca.data.dto.Mensaje
 import com.adso.pizca.data.dto.Receta
-import com.adso.pizca.data.repository.FakeRecetaRepository
+import com.adso.pizca.data.repository.RecetaRepositoryImpl
 import com.adso.pizca.data.repository.RecetaRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -13,7 +13,7 @@ import kotlinx.coroutines.launch
 
 // CAMBIA: el repositorio entra por el constructor
 class ChefViewModel(
-    private val repository: RecetaRepository = FakeRecetaRepository()   // Fase 2: RecetaRepositoryImpl()
+    private val repository: RecetaRepository = RecetaRepositoryImpl()
 ) : ViewModel() {
 
     private var siguienteId = 0L
