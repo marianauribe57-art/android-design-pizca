@@ -23,10 +23,10 @@ import com.adso.pizca.ui.theme.RosaCoral
 @Composable
 fun IconoReceta(categoria: String, tamano: Dp = 52.dp) {
     val color = when (categoria) {
-        "Cerdo" -> RosaCoral
-        "Pollo" -> Crema
-        "Vegetariano" -> Menta
-        "Postres" -> AzulCielo
+        "Pork", "Cerdo" -> RosaCoral
+        "Chicken", "Pollo" -> Crema
+        "Vegetarian", "Vegan", "Vegetariano" -> Menta
+        "Dessert", "Postres" -> AzulCielo
         else -> Durazno
     }
     Box(
