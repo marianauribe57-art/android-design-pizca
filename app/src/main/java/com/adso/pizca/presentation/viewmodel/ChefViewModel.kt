@@ -3,7 +3,7 @@ package com.adso.pizca.presentation.viewmodel
 import androidx.lifecycle.ViewModel
 import com.adso.pizca.data.dto.Mensaje
 import com.adso.pizca.data.dto.Receta
-import com.adso.pizca.data.repository.RecetaRepository
+import com.adso.pizca.data.repository.RecetasDeEjemplo
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,7 +29,7 @@ class ChefViewModel : ViewModel() {
             return
         }
         if (_receta.value?.id == id) return // ya la estamos cocinando
-        val receta = RecetaRepository.buscarPorId(id) ?: return
+        val receta = RecetasDeEjemplo.buscarPorId(id) ?: return
         _receta.value = receta
         _pasoActual.value = 0
         _mensajes.value = emptyList()

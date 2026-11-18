@@ -2,7 +2,7 @@ package com.adso.pizca.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import com.adso.pizca.data.dto.Receta
-import com.adso.pizca.data.repository.RecetaRepository
+import com.adso.pizca.data.repository.RecetasDeEjemplo
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,7 +23,7 @@ class DetalleViewModel : ViewModel() {
     val favoritas: StateFlow<Set<String>> = _favoritas.asStateFlow()
 
     fun cargarReceta(id: String) {
-        _receta.value = RecetaRepository.buscarPorId(id)
+        _receta.value = RecetasDeEjemplo.buscarPorId(id)
         _raciones.value = racionesBase
     }
 
