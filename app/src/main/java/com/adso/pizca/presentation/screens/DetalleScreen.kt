@@ -23,7 +23,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.adso.pizca.presentation.components.Cargando          // NUEVO
 import com.adso.pizca.presentation.components.ChefTeoImagen
+import com.adso.pizca.presentation.components.ErrorCard         // NUEVO
 import com.adso.pizca.presentation.components.StatCard
 import com.adso.pizca.presentation.viewmodel.DetalleViewModel
 import com.adso.pizca.ui.theme.AzulCielo
@@ -46,16 +48,27 @@ fun DetalleScreen(
 
     val receta by viewModel.receta.collectAsState()
     val raciones by viewModel.raciones.collectAsState()
-    val favoritas by viewModel.favoritas.collectAsState()
+    val esFavorita by viewModel.esFavorita.collectAsState()          // CAMBIA: antes era favoritas
+    val errorMessage by viewModel.errorMessage.collectAsState()      // NUEVO
 
     val r = receta
-    if (r == null || r.id != recetaId) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
+    val error = errorMessage            // copia local para que Kotlin sepa que no es null
+
+    // NUEVO: si falló y no hay receta, tarjeta de error con Reintentar
+    if (error != null && (r == null || r.id != recetaId)) {
+        Box(Modifier.fillMaxSize().padding(20.dp), contentAlignment = Alignment.Center) {
+            ErrorCard(error, onReintentar = { viewModel.cargarReceta(recetaId) })
         }
         return
     }
-    val esFavorita = r.id in favoritas
+
+    // Mientras llega la receta, la ruedita
+    if (r == null || r.id != recetaId) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Cargando()                  // CAMBIA: nuestro componente
+        }
+        return
+    }
 
     Box(Modifier.fillMaxSize()) {
         Column(
@@ -80,7 +93,7 @@ fun DetalleScreen(
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.weight(1f)
                 )
-                BotonCircular(onClick = { viewModel.cambiarFavorita(r.id) }) {
+                BotonCircular(onClick = { viewModel.cambiarFavorita() }) {     // CAMBIA: ya no recibe id
                     Icon(
                         if (esFavorita) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
                         contentDescription = "Favorita",
@@ -109,8 +122,9 @@ fun DetalleScreen(
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(r.nombre, fontSize = 26.sp, lineHeight = 30.sp, fontWeight = FontWeight.Bold)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Etiqueta(r.pais, Menta)
-                    Etiqueta(r.categoria, AzulCielo)
+                    // CAMBIA: si vienen vacíos, no se pinta la etiqueta
+                    if (r.pais.isNotBlank()) Etiqueta(r.pais, Menta)
+                    if (r.categoria.isNotBlank()) Etiqueta(r.categoria, AzulCielo)
                 }
             }
 
@@ -139,9 +153,14 @@ fun DetalleScreen(
             }
 
             // Valores nutricionales (componente reutilizable)
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                StatCard("${viewModel.calorias(r, raciones)}", "kcal", RosaCoral, Modifier.weight(1f))
-                StatCard("${viewModel.proteinas(r, raciones)} g", "proteína", Menta, Modifier.weight(1f))
+            // CAMBIA: solo si la receta trae datos de nutrición
+            if (viewModel.tieneNutricion(r)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    StatCard("${viewModel.calorias(r, raciones)}", "kcal", RosaCoral, Modifier.weight(1f))
+                    StatCard("${viewModel.proteinas(r, raciones)} g", "proteína", Menta, Modifier.weight(1f))
+                }
+            } else {
+                Text("Información nutricional: próximamente", fontSize = 14.sp, color = Color(0xFF7E6E6E))
             }
 
             // Ingredientes
