@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "115788794353",
+    "project_id": "pizca-af530",
+    "storage_bucket": "pizca-af530.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:115788794353:android:091c8e7840dfedc054dc50",
+        "android_client_info": {
+          "package_name": "com.adso.pizca"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAJMgS1t0Vez4maq76vtZOOacxFZc7IYus"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
