@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.adso.pizca.data.dto.Objetivo
 import com.adso.pizca.presentation.components.ChipPildora
+import com.adso.pizca.presentation.components.RecetaCard
 import com.adso.pizca.presentation.components.StatCard
 import com.adso.pizca.presentation.viewmodel.PerfilViewModel
 import com.adso.pizca.ui.theme.Blanco
@@ -37,9 +38,13 @@ import com.adso.pizca.ui.theme.RosaCoral
 private val RojoError = Color(0xFFA12B2B)
 
 @Composable
-fun PerfilScreen(viewModel: PerfilViewModel = viewModel()) {
+fun PerfilScreen(
+    onRecetaClick: (String) -> Unit,                         // NUEVO: abrir una favorita
+    viewModel: PerfilViewModel = viewModel()
+) {
     val meta by viewModel.meta.collectAsState()
     val error by viewModel.error.collectAsState()
+    val favoritas by viewModel.favoritas.collectAsState()    // NUEVO
 
     // Si ya se calculó antes, los campos arrancan con esos datos
     val guardado by viewModel.perfil.collectAsState()
@@ -48,6 +53,17 @@ fun PerfilScreen(viewModel: PerfilViewModel = viewModel()) {
     var edad by rememberSaveable { mutableStateOf(guardado?.edad?.toString() ?: "") }
     var esMujer by rememberSaveable { mutableStateOf(guardado?.esMujer ?: true) }
     var objetivo by rememberSaveable { mutableStateOf(guardado?.objetivo ?: Objetivo.MANTENER) }
+
+    // NUEVO: Room tarda un instante en entregar el perfil; cuando llega, llenamos los campos
+    LaunchedEffect(guardado) {
+        guardado?.let {
+            peso = numeroTexto(it.pesoKg)
+            estatura = numeroTexto(it.estaturaCm)
+            edad = it.edad.toString()
+            esMujer = it.esMujer
+            objetivo = it.objetivo
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -131,6 +147,16 @@ fun PerfilScreen(viewModel: PerfilViewModel = viewModel()) {
                     "Estos valores son una referencia general y no reemplazan la recomendación de un profesional de la salud.",
                     fontSize = 12.sp
                 )
+            }
+        }
+
+        // NUEVO: Mis favoritas (guardadas en Room)
+        Text("Mis favoritas", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+        if (favoritas.isEmpty()) {
+            Text("Toca el corazón en una receta para guardarla aquí.", fontSize = 14.sp)
+        } else {
+            favoritas.forEach { receta ->
+                RecetaCard(receta = receta, onClick = { onRecetaClick(receta.id) })
             }
         }
     }

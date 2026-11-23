@@ -1,6 +1,8 @@
 package com.adso.pizca.presentation.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -17,6 +19,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -28,7 +33,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.adso.pizca.data.dto.Receta
+import com.adso.pizca.presentation.components.Cargando          // NUEVO
 import com.adso.pizca.presentation.components.ChefTeoImagen
+import com.adso.pizca.presentation.components.ChipPildora       // NUEVO
+import com.adso.pizca.presentation.components.ErrorCard         // NUEVO
 import com.adso.pizca.presentation.components.IconoReceta
 import com.adso.pizca.presentation.viewmodel.BusquedaViewModel
 import com.adso.pizca.presentation.viewmodel.ModoBusqueda
@@ -49,11 +57,16 @@ fun BusquedaScreen(
     val texto by viewModel.texto.collectAsState()
     val ingredientes by viewModel.ingredientes.collectAsState()
     val resultados by viewModel.resultados.collectAsState()
+    val paises by viewModel.paises.collectAsState()                     // NUEVO
+    val paisSeleccionado by viewModel.paisSeleccionado.collectAsState() // NUEVO
+    val isLoading by viewModel.isLoading.collectAsState()               // NUEVO
+    val errorMessage by viewModel.errorMessage.collectAsState()         // NUEVO
+    var filtroPais by rememberSaveable { mutableStateOf("") }          // NUEVO: filtro de países (solo en pantalla)
 
     val etiqueta = when (modo) {
         ModoBusqueda.NOMBRE -> "Nombre de la receta"
         ModoBusqueda.INGREDIENTES -> "Escribe un ingrediente y toca +"
-        ModoBusqueda.PAIS -> "País"
+        ModoBusqueda.PAIS -> "Filtra países en inglés (ej: mex)"     // CAMBIA: el campo filtra los chips
     }
 
     Column(
@@ -62,7 +75,8 @@ fun BusquedaScreen(
     ) {
         Text("Buscar recetas", fontSize = 26.sp, fontWeight = FontWeight.Bold)
 
-        // Buscador blanco tipo píldora
+        // Buscador blanco tipo píldora. CAMBIA: ahora se ve en los 3 modos; en modo país filtra los países
+        val valorCampo = if (modo == ModoBusqueda.PAIS) filtroPais else texto
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -74,8 +88,11 @@ fun BusquedaScreen(
         ) {
             Icon(Icons.Outlined.Search, contentDescription = null, modifier = Modifier.size(20.dp))
             BasicTextField(
-                value = texto,
-                onValueChange = { viewModel.cambiarTexto(it) },
+                value = valorCampo,
+                onValueChange = { nuevo ->
+                    if (modo == ModoBusqueda.PAIS) filtroPais = nuevo   // en modo país solo filtra los chips
+                    else viewModel.cambiarTexto(nuevo)                  // en los otros modos busca recetas
+                },
                 singleLine = true,
                 textStyle = TextStyle(fontSize = 15.sp, color = CafeOscuro),
                 cursorBrush = SolidColor(CafeOscuro),
@@ -86,7 +103,7 @@ fun BusquedaScreen(
                 modifier = Modifier.weight(1f),
                 decorationBox = { campo ->
                     Box(contentAlignment = Alignment.CenterStart) {
-                        if (texto.isEmpty()) Text(etiqueta, fontSize = 15.sp, color = TextoSuave)
+                        if (valorCampo.isEmpty()) Text(etiqueta, fontSize = 15.sp, color = TextoSuave)
                         campo()
                     }
                 }
@@ -102,6 +119,30 @@ fun BusquedaScreen(
                     Box(contentAlignment = Alignment.Center) {
                         Icon(Icons.Outlined.Add, contentDescription = "Agregar ingrediente")
                     }
+                }
+            }
+        }
+
+        // Modo país: chips de países filtrados por lo que se escribe arriba
+        if (modo == ModoBusqueda.PAIS) {
+            val paisesFiltrados = paises.filter { it.contains(filtroPais.trim(), ignoreCase = true) }
+            if (paises.isNotEmpty() && paisesFiltrados.isEmpty()) {
+                Text("No hay países con \"${filtroPais.trim()}\". Escríbelo en inglés, ej: Mexican", fontSize = 14.sp, color = TextoSuave)
+            }
+            FlowRow(
+                modifier = Modifier
+                    .heightIn(max = 140.dp)                  // máximo ~3 filas de chips
+                    .verticalScroll(rememberScrollState()),  // el resto de países se ve deslizando
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                paisesFiltrados.forEach { pais ->
+                    ChipPildora(
+                        texto = pais,
+                        seleccionado = pais == paisSeleccionado,
+                        colorNormal = Menta,
+                        onClick = { viewModel.seleccionarPais(pais) }
+                    )
                 }
             }
         }
@@ -128,32 +169,47 @@ fun BusquedaScreen(
             }
         }
 
-        // Mensaje de Chef Teo
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Durazno, RoundedCornerShape(22.dp))
-                .padding(horizontal = 14.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            ChefTeoImagen(Modifier.size(width = 40.dp, height = 52.dp))
-            Text(
-                if (resultados.isEmpty()) "Mmm… no encontré recetas. ¡Prueba con otra palabra!"
-                else "¡Encontré ${resultados.size} receta(s) para ti!",
-                fontSize = 15.sp,
-                fontWeight = FontWeight.SemiBold
-            )
-        }
+        // CAMBIA: cargando, error o (mensaje de Teo + resultados)
+        val error = errorMessage            // copia local para que Kotlin sepa que no es null
+        when {
+            isLoading -> Cargando()
+            error != null -> ErrorCard(error, onReintentar = { viewModel.actualizarResultados() })
+            else -> {
+                // Mensaje de Chef Teo
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Durazno, RoundedCornerShape(22.dp))
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    ChefTeoImagen(Modifier.size(width = 40.dp, height = 52.dp))
+                    Text(
+                        // CAMBIA: Teo guía cuando todavía no hay nada que buscar
+                        when {
+                            modo == ModoBusqueda.PAIS && paisSeleccionado == null ->
+                                "Elige un país para ver sus recetas 🌎"
+                            modo == ModoBusqueda.INGREDIENTES && ingredientes.isEmpty() ->
+                                "Agrega un ingrediente y te digo qué cocinar 🥕"
+                            resultados.isEmpty() -> "Mmm… no encontré recetas. ¡Prueba con otra palabra!"
+                            else -> "¡Encontré ${resultados.size} receta(s) para ti!"
+                        },
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
 
-        // Resultados
-        LazyColumn(
-            modifier = Modifier.weight(1f),
-            contentPadding = PaddingValues(bottom = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            items(resultados, key = { it.id }) { receta ->
-                FilaResultado(receta = receta, onClick = { onRecetaClick(receta.id) })
+                // Resultados
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(bottom = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    items(resultados, key = { it.id }) { receta ->
+                        FilaResultado(receta = receta, onClick = { onRecetaClick(receta.id) })
+                    }
+                }
             }
         }
     }

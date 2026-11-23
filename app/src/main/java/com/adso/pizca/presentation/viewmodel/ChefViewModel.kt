@@ -1,14 +1,20 @@
 package com.adso.pizca.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.adso.pizca.data.dto.Mensaje
 import com.adso.pizca.data.dto.Receta
+import com.adso.pizca.data.repository.RecetaRepositoryImpl
 import com.adso.pizca.data.repository.RecetaRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
-class ChefViewModel : ViewModel() {
+// CAMBIA: el repositorio entra por el constructor
+class ChefViewModel(
+    private val repository: RecetaRepository = RecetaRepositoryImpl()
+) : ViewModel() {
 
     private var siguienteId = 0L
 
@@ -29,12 +35,22 @@ class ChefViewModel : ViewModel() {
             return
         }
         if (_receta.value?.id == id) return // ya la estamos cocinando
-        val receta = RecetaRepository.buscarPorId(id) ?: return
-        _receta.value = receta
-        _pasoActual.value = 0
-        _mensajes.value = emptyList()
-        agregarDeTeo("¡Vamos a cocinar ${receta.nombre}! ${receta.emoji}")
-        agregarDeTeo("Paso 1: ${receta.pasos[0]}")
+        // CAMBIA: la receta llega del repositorio dentro de una corrutina
+        viewModelScope.launch {
+            repository.obtenerPorId(id)
+                .onSuccess { receta ->
+                    _receta.value = receta
+                    _pasoActual.value = 0
+                    _mensajes.value = emptyList()
+                    agregarDeTeo("¡Vamos a cocinar ${receta.nombre}! ${receta.emoji}")
+                    agregarDeTeo("Te leo la receta en inglés, como viene del recetario. 📖")
+                    // firstOrNull: si la receta no trae pasos, no se cierra la app
+                    receta.pasos.firstOrNull()?.let { agregarDeTeo("Paso 1: $it") }
+                }
+                .onFailure {
+                    agregarDeTeo("Uy, no pude traer la receta 😢 Revisa tu internet e inténtalo otra vez.")
+                }
+        }
     }
 
     fun enviarMensaje(texto: String) {
@@ -70,7 +86,10 @@ class ChefViewModel : ViewModel() {
             "siguiente" in texto || "listo" in texto || "sigo" in texto -> siguientePaso()
             "ingrediente" in texto -> decirIngredientes()
             "paso" in texto ->
-                agregarDeTeo("Vamos en el paso ${_pasoActual.value + 1}: ${receta.pasos[_pasoActual.value]}")
+                agregarDeTeo(
+                    "Vamos en el paso ${_pasoActual.value + 1}: " +
+                            (receta.pasos.getOrNull(_pasoActual.value) ?: "Esta receta no trae pasos.")   // CAMBIA
+                )
             else ->
                 agregarDeTeo("¡Buena pregunta! Por ahora entiendo \"siguiente\", \"ingredientes\" y \"paso\". Pronto responderé todo con Gemini. 🐭")
         }

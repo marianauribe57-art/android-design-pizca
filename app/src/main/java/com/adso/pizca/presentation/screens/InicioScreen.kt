@@ -16,8 +16,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.adso.pizca.presentation.components.Cargando      // NUEVO
 import com.adso.pizca.presentation.components.ChefTeoImagen
 import com.adso.pizca.presentation.components.ChipPildora
+import com.adso.pizca.presentation.components.ErrorCard     // NUEVO
 import com.adso.pizca.presentation.components.RecetaCard
 import com.adso.pizca.presentation.viewmodel.InicioViewModel
 import com.adso.pizca.ui.theme.AzulCielo
@@ -32,6 +34,9 @@ fun InicioScreen(
 ) {
     val recetas by viewModel.recetas.collectAsState()
     val seleccionada by viewModel.categoriaSeleccionada.collectAsState()
+    val categorias by viewModel.categorias.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val errorMessage by viewModel.errorMessage.collectAsState()
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -49,7 +54,7 @@ fun InicioScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    viewModel.categorias.forEach { categoria ->
+                    categorias.forEach { categoria ->            // CAMBIA: antes era viewModel.categorias
                         ChipPildora(
                             texto = categoria,
                             seleccionado = categoria == seleccionada,
@@ -77,9 +82,16 @@ fun InicioScreen(
             }
         }
 
-        // 4. Tarjetas de recetas (componente reutilizable)
-        items(recetas, key = { it.id }) { receta ->
-            RecetaCard(receta = receta, onClick = { onRecetaClick(receta.id) })
+        // 4. CAMBIA: cargando, error o las tarjetas de recetas
+        val error = errorMessage            // copia local para que Kotlin sepa que no es null
+        when {
+            isLoading -> item { Cargando() }
+            error != null -> item {
+                ErrorCard(error, onReintentar = { viewModel.cargarRecetas() })
+            }
+            else -> items(recetas, key = { it.id }) { receta ->
+                RecetaCard(receta = receta, onClick = { onRecetaClick(receta.id) })
+            }
         }
     }
 }

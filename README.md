@@ -1,7 +1,7 @@
 # 🐭 Pizca — Tu chef y nutricionista de bolsillo
 
 > Proyecto de diseño y arquitectura de una aplicación móvil Android — SENA, ADSO.
-> **Fase actual:** planificación sin código. El proyecto de Android Studio contiene solo el esqueleto autogenerado.
+> **Fase actual:** Avance 2. La app trae recetas reales de **TheMealDB** con **Retrofit** y guarda favoritas y perfil en el celular con **Room**, todo a través de la capa de repositorio.
 
 ---
 
@@ -15,7 +15,8 @@
 6. [Proyecto base](#-hito-5-proyecto-base-en-android-studio)
 7. [Video de presentación](#-hito-6-video-de-presentación)
 8. [Navegación Type-Safe](#-navegación-type-safe)
-9. [Flujo de trabajo en GitHub](#-flujo-de-trabajo-github-flow)
+9. [Avance 2: Capa de repositorio con TheMealDB y Room](#-avance-2-capa-de-repositorio-con-themealdb-y-room)
+10. [Flujo de trabajo en GitHub](#-flujo-de-trabajo-github-flow)
 
 ---
 
@@ -156,7 +157,7 @@ erDiagram
 - **Datos:** `search.php?s={nombre}`, `filter.php?i={ingrediente}`, `filter.php?a={pais}` y `list.php?a=list`.
 - **Acciones:** agregar o quitar ingredientes, cambiar de modo y tocar un resultado para abrir el **Detalle** con su `idMeal`.
 
-> **Nota:** en la versión gratuita de TheMealDB el filtro por ingrediente acepta uno a la vez. La búsqueda combinada (varios ingredientes) es una función premium; la app cruzará los resultados de cada ingrediente o usará la clave premium.
+> **Nota:** en la versión gratuita de TheMealDB el filtro por ingrediente acepta uno a la vez. La búsqueda combinada (varios ingredientes) es una función premium; por eso la app pide un ingrediente a la vez y se queda con las recetas que aparecen en todas las respuestas.
 
 ### Pantalla 4 — Chef Teo
 
@@ -172,7 +173,7 @@ erDiagram
 <img src="docs/capturas/05-perfil.png" width="260" alt="Pantalla de perfil">
 
 - **Muestra:** datos del usuario (peso, estatura, edad, sexo), objetivo y meta diaria de calorías y proteínas.
-- **Datos:** cálculo local con fórmula de gasto energético; el perfil se guarda en **DataStore**. No consume API.
+- **Datos:** cálculo local con fórmula de gasto energético; el perfil se guarda en el celular con **Room**. No consume API.
 - **Acciones:** editar datos, elegir objetivo (bajar de peso, mantenerse, ganar músculo) y ver el plato recomendado.
 
 La barra inferior conecta **Inicio, Buscar, Chef y Perfil**. El dato que viaja entre pantallas es el `idMeal` de la receta seleccionada.
@@ -187,7 +188,7 @@ flowchart LR
     VM --> RR[RecipeRepository]
     VM --> NR[NutritionRepository]
     VM --> CR[ChefRepository]
-    VM --> DS[(DataStore - perfil del usuario)]
+    VM --> DB[(Room - perfil y favoritas)]
     RR --> R1[Retrofit MealDbService] --> A1[(TheMealDB API)]
     NR --> R2[Retrofit UsdaService] --> A2[(USDA FoodData Central)]
     CR --> AI[Firebase AI Logic] --> A3[(Gemini)]
@@ -214,11 +215,11 @@ flowchart LR
 ### Buenas prácticas planificadas
 
 - **Patrón MVVM:** UI → ViewModel → Repositorio → Fuente remota (Retrofit / Firebase AI Logic).
-- **Cliente HTTP:** Retrofit con Gson para serialización.
+- **Cliente HTTP:** Retrofit con Kotlinx Serialization para convertir el JSON y OkHttp Logging para ver las peticiones en Logcat.
 - **Asincronía:** Kotlin Coroutines (`suspend`, `Dispatchers.IO`).
 - **Estados de UI:** Loading / Success / Error en cada pantalla.
 - **Seguridad:** la API key de USDA se guarda en `local.properties` (excluido por `.gitignore`) y nunca se sube al repositorio. Gemini se protege con Firebase App Check.
-- **Librerías previstas:** Coil (imágenes), DataStore (perfil del usuario), Navigation Compose, Lottie (animación de Chef Teo).
+- **Librerías:** Retrofit, OkHttp, Kotlinx Serialization, Room (perfil y favoritas) y Navigation Compose. Previstas para más adelante: Coil (imágenes) y Lottie (animación de Chef Teo).
 
 ---
 
@@ -277,9 +278,95 @@ La app usa la navegación oficial de Jetpack Compose con rutas `@Serializable`. 
 
 📘 **Arquitectura completa, archivo por archivo:** [docs/tutorial_arquitectura.md](docs/tutorial_arquitectura.md)
 
+---
+
+## 📦 Avance 2: Capa de repositorio con TheMealDB y Room
+
+En este avance Pizca dejó las recetas escritas a mano: ahora trae recetas reales de **TheMealDB** con **Retrofit** y guarda las **favoritas** y el **perfil** en el celular con **Room**. Todo pasa por la **capa de repositorio**, con la misma arquitectura del Proyecto Integrador (*Referencia Avance 2*).
+
+### Arquitectura
+
+```mermaid
+flowchart TD
+    UI[Pantallas Jetpack Compose] --> VM[ViewModels con StateFlow]
+    VM --> RR[RecetaRepository]
+    VM --> FR[FavoritaRepository]
+    VM --> PR[PerfilRepository]
+    RR --> API[ApiClient: Retrofit + OkHttp] --> MDB[(TheMealDB)]
+    FR --> DB[(Room: pizca.db)]
+    PR --> DB
+```
+
+La pantalla le pide datos al ViewModel, el ViewModel al repositorio, y el repositorio decide si va a internet (TheMealDB) o a la base de datos del celular (Room). La pantalla nunca sabe de dónde vienen los datos.
+
+### Qué hace cada capa
+
+| Capa | Archivos | Qué hace |
+|---|---|---|
+| DTO | `data/dto/MealDbDtos.kt` | Molde exacto del JSON de TheMealDB, con `@Serializable` |
+| Red | `data/api/TheMealDbApi.kt`, `data/network/ApiClient.kt` | Endpoints con Retrofit (`@GET` + `@Query`), Kotlinx Serialization y OkHttp Logging |
+| Mapper | `data/mapper/MealMapper.kt` | Convierte la receta de TheMealDB (20 campos sueltos de ingredientes) en nuestra `Receta` |
+| Repositorio | `data/repository/` | 3 interfaces + 3 implementaciones; funciones `suspend` que devuelven `Result<T>` con `runCatching` |
+| Local | `data/local/`, `PizcaApp.kt` | Room: entidades, DAOs y la base `pizca.db`, que se crea al abrir la app |
+| ViewModels | `presentation/viewmodel/` | `viewModelScope.launch`, `onSuccess` / `onFailure`, `isLoading` y `errorMessage` |
+
+### Room: guardar, consultar, actualizar y eliminar
+
+TheMealDB es una API pública de solo lectura (`GET`). Las operaciones de escritura las hace **Room** en el celular:
+
+| Operación | Dónde se ve en la app | Cómo se hace |
+|---|---|---|
+| Guardar | Tocar ❤️ en el Detalle | `FavoritaDao.insertar` |
+| Consultar | Perfil → "Mis favoritas" y el corazón lleno | `observarTodas` / `observarSiExiste` con `Flow` |
+| Actualizar | "Calcular mi meta diaria" en Perfil | `PerfilDao.guardar` con `@Upsert` |
+| Eliminar | Tocar ❤️ otra vez | `FavoritaDao.eliminar` |
+
+Los datos siguen ahí después de cerrar y volver a abrir la app.
+
+### Capturas
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/capturas/avance2-inicio.png" width="200" alt="Inicio con recetas reales"><br>Inicio con recetas reales</td>
+    <td align="center"><img src="docs/capturas/avance2-busqueda-pais.png" width="200" alt="Búsqueda por país"><br>Búsqueda por país</td>
+    <td align="center"><img src="docs/capturas/avance2-detalle-favorita.png" width="200" alt="Detalle con favorita"><br>Detalle con favorita ❤️</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/capturas/avance2-perfil-favoritas.png" width="200" alt="Favoritas guardadas en Room"><br>Favoritas guardadas en Room</td>
+    <td align="center"><img src="docs/capturas/avance2-error-sin-internet.png" width="200" alt="Error sin internet"><br>Sin internet: error y Reintentar</td>
+    <td></td>
+  </tr>
+</table>
+
+### Pruebas
+
+- **`RecetaRepositoryTest`** (`app/src/test`): 4 pruebas contra TheMealDB real (búsqueda por nombre, receta por id, búsqueda sin resultados y varios ingredientes). Resultado: ✅ 4/4.
+- **Sin internet:** cada pantalla muestra una tarjeta de error con **Reintentar** y la app no se cierra.
+
+### Librerías nuevas
+
+| Librería | Versión | Para qué |
+|---|---|---|
+| Retrofit + converter Kotlinx Serialization | 2.11.0 | Llamar a TheMealDB y convertir el JSON |
+| OkHttp Logging Interceptor | 4.12.0 | Ver cada petición y respuesta en Logcat |
+| Room (runtime, ktx, compiler) | 2.8.5 | Base de datos local |
+| KSP | 2.3.10 | Genera el código de Room a partir de las anotaciones |
+
+### Quién hizo qué
+
+| Integrante | Parte del Avance 2 |
+|---|---|
+| Mariana Uribe Muñoz | Configuración (Gradle, permiso INTERNET, contratos), Room y pantalla de Perfil |
+| Valeria Usuga | Capa de red, `RecetaRepositoryImpl` y pruebas unitarias |
+| Ismael Mira | ViewModels, estados de carga y error, y conexión de las pantallas con los repositorios |
+
+📘 **Explicación paso a paso de la capa de datos:** [docs/tutorial_capa_datos.md](docs/tutorial_capa_datos.md)
+
+---
+
 ## 🔀 Flujo de trabajo (GitHub Flow)
 
-1. Cada hito o cambio se trabaja en una **rama propia** a partir de `main` (por ejemplo, `docs/readme`, `docs/capturas`).
-2. Se sube la rama y se abre un **Pull Request** hacia `main`.
+1. Cada hito o cambio se trabaja en una **rama propia** a partir de `develop` (por ejemplo, `feature/capa-red`, `docs/avance-2`).
+2. Se sube la rama y se abre un **Pull Request** hacia `develop`.
 3. Otro integrante **revisa y aprueba** el Pull Request.
-4. Se hace **Merge** a `main`.
+4. Se hace **Merge** a `develop`. Cuando `develop` está estable, se pasa a `main` con otro Pull Request.
