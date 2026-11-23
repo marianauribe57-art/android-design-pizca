@@ -27,6 +27,10 @@ class ChefViewModel(
     private val _mensajes = MutableStateFlow<List<Mensaje>>(emptyList())
     val mensajes: StateFlow<List<Mensaje>> = _mensajes.asStateFlow()
 
+    // NUEVO: true mientras Teo "piensa" (esperando a Gemini)
+    private val _escribiendo = MutableStateFlow(false)
+    val escribiendo: StateFlow<Boolean> = _escribiendo.asStateFlow()
+
     fun cargarReceta(id: String?) {
         if (id == null) {
             if (_mensajes.value.isEmpty()) {
