@@ -3,6 +3,9 @@ package com.adso.pizca.presentation.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.adso.pizca.data.dto.Receta
+import com.adso.pizca.data.dto.ResumenCalificaciones
+import com.adso.pizca.data.repository.CalificacionRepository
+import com.adso.pizca.data.repository.CalificacionRepositoryImpl
 import com.adso.pizca.data.repository.RecetaRepositoryImpl
 import com.adso.pizca.data.repository.FavoritaRepositoryImpl
 import com.adso.pizca.data.repository.FavoritaRepository
@@ -18,7 +21,8 @@ import kotlinx.coroutines.launch
 class DetalleViewModel(
     private val recetaRepository: RecetaRepository = RecetaRepositoryImpl(),
     private val favoritaRepository: FavoritaRepository = FavoritaRepositoryImpl(),
-    private val traduccion: TraduccionRepository = TraduccionRepositoryImpl()   // NUEVO
+    private val traduccion: TraduccionRepository = TraduccionRepositoryImpl(),   // NUEVO
+    private val calificaciones: CalificacionRepository = CalificacionRepositoryImpl()   // NUEVO: Apps Script
 ) : ViewModel() {
 
     // Las recetas de ejemplo rinden 4 raciones
@@ -43,6 +47,19 @@ class DetalleViewModel(
 
     private var favoritaJob: Job? = null
 
+    // NUEVO: calificaciones de la comunidad (Apps Script + Google Sheet)
+    private val _resumen = MutableStateFlow<ResumenCalificaciones?>(null)
+    val resumen: StateFlow<ResumenCalificaciones?> = _resumen.asStateFlow()
+
+    private val _cargandoCalificaciones = MutableStateFlow(false)
+    val cargandoCalificaciones: StateFlow<Boolean> = _cargandoCalificaciones.asStateFlow()
+
+    private val _enviando = MutableStateFlow(false)
+    val enviando: StateFlow<Boolean> = _enviando.asStateFlow()
+
+    private val _mensajeCalificacion = MutableStateFlow<String?>(null)
+    val mensajeCalificacion: StateFlow<String?> = _mensajeCalificacion.asStateFlow()
+
     fun cargarReceta(id: String) {
         _raciones.value = racionesBase
         viewModelScope.launch {
@@ -62,10 +79,40 @@ class DetalleViewModel(
                 }
             }
         }
+        // NUEVO: las calificaciones se cargan aparte; si fallan, la receta igual se muestra
+        cargarCalificaciones(id)
+
         // Escuchamos si es favorita: Room avisa solo cada vez que cambia
         favoritaJob?.cancel()
         favoritaJob = viewModelScope.launch {
             favoritaRepository.esFavorita(id).collect { _esFavorita.value = it }
+        }
+    }
+
+    // NUEVO: pide al Apps Script el promedio y los comentarios (doGet)
+    fun cargarCalificaciones(id: String) {
+        _mensajeCalificacion.value = null
+        viewModelScope.launch {
+            _cargandoCalificaciones.value = true
+            calificaciones.obtenerResumen(id)
+                .onSuccess { _resumen.value = it }
+                .onFailure { _resumen.value = null }
+            _cargandoCalificaciones.value = false
+        }
+    }
+
+    // NUEVO: envía la calificación al Apps Script (doPost) y refresca el resumen
+    fun enviarCalificacion(estrellas: Int, comentario: String) {
+        val receta = _receta.value ?: return
+        viewModelScope.launch {
+            _enviando.value = true
+            calificaciones.enviar(receta.id, estrellas, comentario)
+                .onSuccess {
+                    _mensajeCalificacion.value = "¡Gracias por tu opinión!"
+                    calificaciones.obtenerResumen(receta.id).onSuccess { _resumen.value = it }
+                }
+                .onFailure { _mensajeCalificacion.value = "No pudimos enviar tu opinión. Revisa tu conexión." }
+            _enviando.value = false
         }
     }
 
