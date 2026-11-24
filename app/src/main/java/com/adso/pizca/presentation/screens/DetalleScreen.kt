@@ -26,6 +26,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.adso.pizca.data.mapper.Diccionario
 import com.adso.pizca.presentation.components.Cargando          // NUEVO
 import com.adso.pizca.presentation.components.ChefTeoImagen
+import com.adso.pizca.presentation.components.ComentariosSheet       // NUEVO
+import com.adso.pizca.presentation.components.FormularioCalificacion  // NUEVO
+import com.adso.pizca.presentation.components.ResumenCalificacion     // NUEVO
 import com.adso.pizca.presentation.components.ErrorCard         // NUEVO
 import com.adso.pizca.presentation.components.StatCard
 import com.adso.pizca.presentation.viewmodel.DetalleViewModel
@@ -51,6 +54,12 @@ fun DetalleScreen(
     val raciones by viewModel.raciones.collectAsState()
     val esFavorita by viewModel.esFavorita.collectAsState()          // CAMBIA: antes era favoritas
     val errorMessage by viewModel.errorMessage.collectAsState()      // NUEVO
+    // NUEVO: calificaciones de la comunidad
+    val resumen by viewModel.resumen.collectAsState()
+    val cargandoCalificaciones by viewModel.cargandoCalificaciones.collectAsState()
+    val enviando by viewModel.enviando.collectAsState()
+    val mensajeCalificacion by viewModel.mensajeCalificacion.collectAsState()
+    var verComentarios by remember { mutableStateOf(false) }
 
     val r = receta
     val error = errorMessage            // copia local para que Kotlin sepa que no es null
@@ -128,6 +137,12 @@ fun DetalleScreen(
                     if (r.pais.isNotBlank()) Etiqueta(Diccionario.pais(r.pais), Menta)
                     if (r.categoria.isNotBlank()) Etiqueta(Diccionario.categoria(r.categoria), AzulCielo)
                 }
+                // NUEVO: ⭐ promedio · opiniones (al tocarlo se abren los comentarios)
+                ResumenCalificacion(
+                    resumen = resumen,
+                    cargando = cargandoCalificaciones,
+                    onVerComentarios = { verComentarios = true }
+                )
             }
 
             // Raciones con botones - y +
@@ -183,6 +198,13 @@ fun DetalleScreen(
                     Text("${i + 1}. $paso", fontSize = 14.sp)
                 }
             }
+
+            // NUEVO: calificar la receta (se guarda en la Google Sheet con Apps Script)
+            FormularioCalificacion(
+                enviando = enviando,
+                mensaje = mensajeCalificacion,
+                onEnviar = { estrellas, comentario -> viewModel.enviarCalificacion(estrellas, comentario) }
+            )
         }
 
         // Botón fijo abajo con Chef Teo
@@ -207,6 +229,12 @@ fun DetalleScreen(
                 Text("Cocinar con Chef Teo", fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
             }
         }
+    }
+
+    // NUEVO: hoja con los comentarios de la comunidad
+    val resumenActual = resumen
+    if (verComentarios && resumenActual != null) {
+        ComentariosSheet(resumen = resumenActual, onCerrar = { verComentarios = false })
     }
 }
 

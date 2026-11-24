@@ -1,7 +1,7 @@
 # 🐭 Pizca — Tu chef y nutricionista de bolsillo
 
 > Proyecto de diseño y arquitectura de una aplicación móvil Android — SENA, ADSO.
-> **Fase actual:** Avance 3. Chef Teo conversa con **Gemini** (Firebase AI Logic) y toda la app se ve en **español**: Gemini traduce las recetas de TheMealDB y las traducciones se guardan en el celular con **Room**.
+> **Fase actual:** Avance 4. Los usuarios califican recetas y ven las opiniones de todos con **Google Apps Script** y una **Google Sheet**. Chef Teo sigue conversando con **Gemini** y toda la app se ve en **español**.
 
 ---
 
@@ -17,7 +17,8 @@
 8. [Navegación Type-Safe](#-navegación-type-safe)
 9. [Avance 2: Capa de repositorio con TheMealDB y Room](#-avance-2-capa-de-repositorio-con-themealdb-y-room)
 10. [Avance 3: Chef Teo con Gemini y app en español](#-avance-3-chef-teo-con-gemini-y-app-en-español)
-11. [Flujo de trabajo en GitHub](#-flujo-de-trabajo-github-flow)
+11. [Avance 4: Calificaciones de la comunidad con Google Apps Script](#-avance-4-calificaciones-de-la-comunidad-con-google-apps-script)
+12. [Flujo de trabajo en GitHub](#-flujo-de-trabajo-github-flow)
 
 ---
 
@@ -473,6 +474,87 @@ La app no se cae: Teo avisa que no pudo traducir y sigue con la receta en inglé
 | Ismael Mira | Indicador "Teo está escribiendo…" y conexión de `ChefViewModel` con Gemini |
 
 📘 **Explicación paso a paso de la integración con Gemini:** [docs/tutorial_gemini.md](docs/tutorial_gemini.md)
+
+---
+
+## ⭐ Avance 4: Calificaciones de la comunidad con Google Apps Script
+
+En este avance los usuarios pueden **calificar una receta** (1 a 5 estrellas y un comentario) y ver el **promedio y los comentarios de todos**. Room guarda lo personal de cada usuario; para lo que se comparte entre usuarios integramos **Google Apps Script** como un backend ligero que guarda los datos en una **Google Sheet**.
+
+### Arquitectura
+
+```mermaid
+flowchart TD
+    UI[DetalleScreen: resumen, formulario y comentarios] --> VM[DetalleViewModel con StateFlow]
+    VM --> CR[CalificacionRepository]
+    CR --> API[ApiClient: Retrofit de Apps Script]
+    API -->|POST exec: doPost guarda| AS[Apps Script web app]
+    API -->|GET exec?recetaId: doGet resume| AS
+    AS --> GS[(Google Sheet: Calificaciones)]
+```
+
+Es la misma arquitectura por capas de los avances anteriores: `DetalleViewModel` solo conoce la interfaz `CalificacionRepository` y no sabe que detrás hay un Apps Script.
+
+### Qué hace cada pieza
+
+| Pieza | Archivo | Qué hace |
+|---|---|---|
+| Script | Apps Script `Pizca Calificaciones API` | `doPost` valida y guarda una fila; `doGet` devuelve el promedio, el total y los últimos 20 comentarios de una receta |
+| Hoja de datos | Google Sheet `Pizca – Calificaciones` | Columnas `fecha`, `recetaId`, `estrellas` y `comentario` |
+| DTOs | `data/dto/CalificacionDtos.kt` | Moldes del JSON que se envía y se recibe |
+| Endpoints | `data/api/CalificacionesApi.kt` | `@GET("exec")` con `@Query("recetaId")` y `@POST("exec")` con `@Body` |
+| Cliente | `data/network/ApiClient.kt` | Un segundo Retrofit con la URL del Apps Script; comparte el cliente OkHttp, así que todo se ve en Logcat |
+| Repositorio | `data/repository/CalificacionRepository(Impl).kt` | `obtenerResumen()` y `enviar()`; devuelven `Result` y revisan el campo `ok` del script |
+| Pantalla | `presentation/components/Calificaciones.kt`, `DetalleScreen.kt` | Resumen "⭐ promedio · opiniones" bajo el título, formulario al final y hoja con los comentarios |
+
+### Endpoints del Apps Script
+
+| Método | Ruta | Cuerpo / parámetros | Respuesta |
+|---|---|---|---|
+| GET | `/exec?recetaId={id}` | `recetaId` | `{ ok, recetaId, promedio, total, comentarios[] }` |
+| POST | `/exec` | `{ recetaId, estrellas, comentario }` | `{ ok }` o `{ ok: false, error }` |
+
+### Room vs. Apps Script
+
+| | Room | Apps Script |
+|---|---|---|
+| Dónde guarda | En el celular | En la nube (Google Sheet) |
+| Qué guarda | Lo personal: favoritas y perfil | Lo compartido: calificaciones de todos |
+| ¿Necesita internet? | No | Sí |
+
+### Si Apps Script falla
+
+La receta se muestra igual: el resumen dice *"Calificaciones no disponibles"* y, si falla el envío, aparece *"No pudimos enviar tu opinión. Revisa tu conexión."* La app no se cierra.
+
+### Capturas
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/capturas/avance4-resumen.png" width="200" alt="Resumen de calificaciones"><br>Resumen: ⭐ promedio · opiniones</td>
+    <td align="center"><img src="docs/capturas/avance4-formulario.png" width="200" alt="Formulario para calificar"><br>"¿Ya la preparaste?"</td>
+  </tr>
+  <tr>
+    <td align="center" colspan="2"><img src="docs/capturas/avance4-sheet.png" width="420" alt="Google Sheet con calificaciones"><br>Las calificaciones en la Google Sheet</td>
+  </tr>
+</table>
+
+### Pruebas
+
+| Prueba | Resultado esperado | Estado |
+|---|---|---|
+| GET desde el navegador con `?recetaId=52772` | JSON con `ok: true`, promedio y total | ✅ |
+| POST desde PowerShell (`Invoke-RestMethod`) | `ok: true` y una fila nueva en la Sheet | ✅ |
+| Abrir el detalle de una receta calificada | Aparece "⭐ promedio · opiniones" | ✅ |
+| Enviar una calificación desde la app | "¡Gracias por tu opinión!", fila nueva y resumen actualizado | ✅ |
+| Tocar el resumen | Se abre la hoja con los comentarios | ✅ |
+
+### Quién hizo qué
+
+| Integrante | Parte del Avance 4 |
+|---|---|
+| Mariana Uribe Muñoz | Apps Script y Google Sheet |
+| Valeria Usuga | Revisión del Pull Request |
+| Ismael Mira | Pruebas |
 
 ---
 

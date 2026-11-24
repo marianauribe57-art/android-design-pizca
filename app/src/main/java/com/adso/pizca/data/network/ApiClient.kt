@@ -1,5 +1,6 @@
 package com.adso.pizca.data.network
 
+import com.adso.pizca.data.api.CalificacionesApi
 import com.adso.pizca.data.api.TheMealDbApi
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
@@ -38,5 +39,23 @@ object ApiClient {
 
     val mealDbApi: TheMealDbApi by lazy {
         retrofit.create(TheMealDbApi::class.java)
+    }
+
+    // ---------- Apps Script: calificaciones de la comunidad ----------
+
+    /** URL del Apps Script SIN el "exec" final y terminando en "/" (Retrofit lo exige) */
+    private const val APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxGG_-EpmTSUefABEhsJrcdVHGnzpWYIXx3-BtV1trR5w6twX4iw1WKFtZV2gfhS2WX/"
+
+    // Un segundo Retrofit: cada Retrofit tiene una sola dirección base
+    private val retrofitAppsScript: Retrofit by lazy {
+        Retrofit.Builder()
+            .baseUrl(APPS_SCRIPT_URL)
+            .client(okHttpClient)   // el mismo cliente: también se ve en Logcat
+            .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
+            .build()
+    }
+
+    val calificacionesApi: CalificacionesApi by lazy {
+        retrofitAppsScript.create(CalificacionesApi::class.java)
     }
 }
