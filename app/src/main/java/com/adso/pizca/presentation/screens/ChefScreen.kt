@@ -35,6 +35,12 @@ import com.adso.pizca.ui.theme.Crema
 import com.adso.pizca.ui.theme.Durazno
 import com.adso.pizca.ui.theme.Menta
 import com.adso.pizca.ui.theme.RosaCoral
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.draw.alpha
 
 private val BordeSuave = Color(0xFFE3C9B8)
 private val TextoSuave = Color(0xFF7E6E6E)
@@ -49,12 +55,14 @@ fun ChefScreen(
     val receta by viewModel.receta.collectAsState()
     val paso by viewModel.pasoActual.collectAsState()
     val mensajes by viewModel.mensajes.collectAsState()
+    val escribiendo by viewModel.escribiendo.collectAsState()
     var texto by remember { mutableStateOf("") }
 
     // Baja automáticamente al último mensaje
     val listState = rememberLazyListState()
-    LaunchedEffect(mensajes.size) {
-        if (mensajes.isNotEmpty()) listState.animateScrollToItem(mensajes.lastIndex)
+    LaunchedEffect(mensajes.size, escribiendo) {
+        val total = mensajes.size + if (escribiendo) 1 else 0
+        if (total > 0) listState.animateScrollToItem(total - 1)
     }
 
     fun enviar() {
@@ -87,7 +95,7 @@ fun ChefScreen(
                 )
             }
             Text(
-                "● Te escucha",
+                if (escribiendo) "Escribiendo…" else "● Te escucha",
                 modifier = Modifier
                     .background(Menta, RoundedCornerShape(50))
                     .padding(horizontal = 10.dp, vertical = 4.dp),
@@ -136,7 +144,11 @@ fun ChefScreen(
             items(mensajes, key = { it.id }) { mensaje ->
                 BurbujaMensaje(mensaje)
             }
+            if (escribiendo) {
+                item(key = "escribiendo") { BurbujaEscribiendo() }
+            }
         }
+
 
         // Respuestas rápidas
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -178,6 +190,7 @@ fun ChefScreen(
                 onClick = { enviar() },
                 shape = CircleShape,
                 color = RosaCoral,
+                enabled = !escribiendo,
                 contentColor = CafeOscuro,
                 modifier = Modifier.size(52.dp)
             ) {
@@ -226,4 +239,24 @@ private fun BurbujaMensaje(mensaje: Mensaje) {
             lineHeight = 20.sp
         )
     }
+}
+
+@Composable
+private fun BurbujaEscribiendo() {
+    // Los puntitos "respiran": se aclaran y oscurecen sin parar
+    val transicion = rememberInfiniteTransition(label = "escribiendo")
+    val alfa by transicion.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(600), RepeatMode.Reverse),
+        label = "alfa"
+    )
+    Text(
+        "Teo está escribiendo…",
+        modifier = Modifier
+            .background(Durazno, RoundedCornerShape(20.dp))
+            .padding(horizontal = 14.dp, vertical = 10.dp)
+            .alpha(alfa),
+        fontSize = 14.sp
+    )
 }
