@@ -54,6 +54,7 @@ fun DetalleScreen(
     val raciones by viewModel.raciones.collectAsState()
     val esFavorita by viewModel.esFavorita.collectAsState()          // CAMBIA: antes era favoritas
     val errorMessage by viewModel.errorMessage.collectAsState()      // NUEVO
+    val avisoTraduccion by viewModel.avisoTraduccion.collectAsState() // NUEVO: Gemini ocupado
     // NUEVO: calificaciones de la comunidad
     val resumen by viewModel.resumen.collectAsState()
     val cargandoCalificaciones by viewModel.cargandoCalificaciones.collectAsState()
@@ -131,6 +132,10 @@ fun DetalleScreen(
             // Nombre y etiquetas
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(r.nombre, fontSize = 26.sp, lineHeight = 30.sp, fontWeight = FontWeight.Bold)
+                // NUEVO: si Gemini no pudo traducir, un aviso pequeño debajo del nombre
+                avisoTraduccion?.let { aviso ->
+                    Text(aviso, fontSize = 13.sp, lineHeight = 17.sp, color = CafeOscuro.copy(alpha = 0.7f))
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     // CAMBIA: si vienen vacíos, no se pinta la etiqueta
                     // CAMBIA: se muestran en español

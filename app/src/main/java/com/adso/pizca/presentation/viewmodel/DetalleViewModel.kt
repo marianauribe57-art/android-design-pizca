@@ -47,6 +47,16 @@ class DetalleViewModel(
 
     private var favoritaJob: Job? = null
 
+    // NUEVO: aviso cuando Gemini no pudo traducir (por ejemplo, porque está saturado)
+    private val _avisoTraduccion = MutableStateFlow<String?>(null)
+    val avisoTraduccion: StateFlow<String?> = _avisoTraduccion.asStateFlow()
+
+    // NUEVO: ¿el error es porque Gemini está saturado ("high demand", "overloaded", 503)?
+    private fun esAltaDemanda(error: Throwable): Boolean {
+        val texto = error.message.orEmpty().lowercase()
+        return "demand" in texto || "overloaded" in texto || "503" in texto
+    }
+
     // NUEVO: calificaciones de la comunidad (Apps Script + Google Sheet)
     private val _resumen = MutableStateFlow<ResumenCalificaciones?>(null)
     val resumen: StateFlow<ResumenCalificaciones?> = _resumen.asStateFlow()
@@ -62,6 +72,7 @@ class DetalleViewModel(
 
     fun cargarReceta(id: String) {
         _raciones.value = racionesBase
+        _avisoTraduccion.value = null   // NUEVO: receta nueva, aviso limpio
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
@@ -74,9 +85,18 @@ class DetalleViewModel(
             // NUEVO: cuando llega la traducción, cambiamos la receta por la versión en español.
             // Si falla, se queda en inglés.
             resultado.getOrNull()?.let { original ->
-                traduccion.receta(original).onSuccess { traducida ->
-                    if (_receta.value?.id == traducida.id) _receta.value = traducida
-                }
+                traduccion.receta(original)
+                    .onSuccess { traducida ->
+                        if (_receta.value?.id == traducida.id) _receta.value = traducida
+                    }
+                    .onFailure { e ->
+                        // NUEVO: aviso debajo del nombre; la receta se sigue viendo en inglés
+                        if (_receta.value?.id == original.id) {
+                            _avisoTraduccion.value =
+                                if (esAltaDemanda(e)) "🐭 Gemini está muy ocupado ahora mismo, por eso la receta se ve en inglés. Intenta en un ratico."
+                                else "No pudimos traducir la receta, por eso se ve en inglés."
+                        }
+                    }
             }
         }
         // NUEVO: las calificaciones se cargan aparte; si fallan, la receta igual se muestra
