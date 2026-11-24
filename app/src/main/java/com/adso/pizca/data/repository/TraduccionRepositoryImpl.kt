@@ -9,6 +9,7 @@ import com.adso.pizca.data.dto.TraduccionDto
 import com.adso.pizca.data.local.TraduccionDao
 import com.adso.pizca.data.local.TraduccionEntity
 import com.adso.pizca.data.network.GeminiClient
+import com.adso.pizca.data.network.probarEnOrden
 import com.google.firebase.ai.GenerativeModel
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -21,7 +22,7 @@ import kotlin.coroutines.cancellation.CancellationException
  */
 class TraduccionRepositoryImpl(
     private val chefTeo: ChefTeoRepository = ChefTeoRepositoryImpl(),
-    private val ligero: GenerativeModel = GeminiClient.ligero,
+    private val ligeros: List<GenerativeModel> = GeminiClient.ligeros,   // CAMBIA: lista de modelos
     private val dao: TraduccionDao = PizcaApp.database.traduccionDao()
 ) : TraduccionRepository {
 
@@ -83,7 +84,7 @@ class TraduccionRepositoryImpl(
                 "Responde SOLO con JSON con esta forma: {\"nombres\": [\"...\"]}, " +
                 "con la misma cantidad y en el mismo orden.\n\n$lista"
 
-        val texto = ligero.generateContent(prompt).text ?: error("Gemini no respondió")
+        val texto = probarEnOrden(ligeros) { it.generateContent(prompt).text } ?: error("Gemini no respondió")
         val nombres = json.decodeFromString<NombresDto>(texto).nombres
         if (nombres.size != recetas.size) error("La traducción de nombres no coincide")
 
@@ -107,7 +108,7 @@ class TraduccionRepositoryImpl(
             val prompt = "Traduce al inglés este término de cocina para buscarlo en un recetario en inglés. " +
                     "Si ya está en inglés, déjalo igual. " +
                     "Responde SOLO con JSON con esta forma: {\"ingles\": \"...\"}\n\n$limpio"
-            val respuesta = ligero.generateContent(prompt).text ?: error("Gemini no respondió")
+            val respuesta = probarEnOrden(ligeros) { it.generateContent(prompt).text } ?: error("Gemini no respondió")
             val ingles = json.decodeFromString<InglesDto>(respuesta).ingles.trim()
             if (ingles.isBlank()) limpio
             else ingles.also { dao.guardar(TraduccionEntity(clave, it)) }

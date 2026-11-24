@@ -17,6 +17,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlin.coroutines.cancellation.CancellationException
 
+// NUEVO: lo que dice Teo cuando Gemini está saturado
+private const val MENSAJE_OCUPADO = "🐭 Gemini está muy ocupado ahora mismo, intenta en un ratico."
+
 class ChefViewModel(
     private val repository: RecetaRepository = RecetaRepositoryImpl(),
     private val chefTeo: ChefTeoRepository = ChefTeoRepositoryImpl(),                // Teo con Gemini
@@ -75,6 +78,8 @@ class ChefViewModel(
             .onFailure { error ->
                 Log.e("ChefTeo", "Falló traducir", error)
                 agregarDeTeo("¡Vamos a cocinar ${receta.nombre}! ${receta.emoji}")
+                // NUEVO: si Gemini está saturado, Teo lo dice de forma amable
+                if (esAltaDemanda(error)) agregarDeTeo(MENSAJE_OCUPADO)
                 agregarDeTeo("No pude traducirla, así que te la leo en inglés como viene del recetario. 📖")
             }
         _escribiendo.value = false
@@ -145,7 +150,11 @@ class ChefViewModel(
             } catch (e: Exception) {
                 Log.e("ChefTeo", "Falló responder", e)
                 if (idRespuesta == null) {
-                    agregarDeTeo("Uy, se me enredó la cocina 🐭 Inténtalo otra vez en un momento.")
+                    // CAMBIA: si Gemini está saturado, Teo lo dice de forma amable
+                    agregarDeTeo(
+                        if (esAltaDemanda(e)) MENSAJE_OCUPADO
+                        else "Uy, se me enredó la cocina 🐭 Inténtalo otra vez en un momento."
+                    )
                 }
             } finally {
                 _escribiendo.value = false
@@ -161,6 +170,12 @@ class ChefViewModel(
         val id = siguienteId++
         _mensajes.value = _mensajes.value + Mensaje(id, texto, esDeTeo)
         return id
+    }
+
+    // NUEVO: ¿el error es porque Gemini está saturado ("high demand", "overloaded", 503)?
+    private fun esAltaDemanda(error: Throwable): Boolean {
+        val texto = error.message.orEmpty().lowercase()
+        return "demand" in texto || "overloaded" in texto || "503" in texto
     }
 
     // NUEVO: cambia el texto de un mensaje que ya está en el chat
