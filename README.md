@@ -1,7 +1,7 @@
 # 🐭 Pizca — Tu chef y nutricionista de bolsillo
 
 > Proyecto de diseño y arquitectura de una aplicación móvil Android — SENA, ADSO.
-> **Fase actual:** Avance 2. La app trae recetas reales de **TheMealDB** con **Retrofit** y guarda favoritas y perfil en el celular con **Room**, todo a través de la capa de repositorio.
+> **Fase actual:** Avance 3. Chef Teo conversa con **Gemini** (Firebase AI Logic) y toda la app se ve en **español**: Gemini traduce las recetas de TheMealDB y las traducciones se guardan en el celular con **Room**.
 
 ---
 
@@ -16,7 +16,8 @@
 7. [Video de presentación](#-hito-6-video-de-presentación)
 8. [Navegación Type-Safe](#-navegación-type-safe)
 9. [Avance 2: Capa de repositorio con TheMealDB y Room](#-avance-2-capa-de-repositorio-con-themealdb-y-room)
-10. [Flujo de trabajo en GitHub](#-flujo-de-trabajo-github-flow)
+10. [Avance 3: Chef Teo con Gemini y app en español](#-avance-3-chef-teo-con-gemini-y-app-en-español)
+11. [Flujo de trabajo en GitHub](#-flujo-de-trabajo-github-flow)
 
 ---
 
@@ -44,7 +45,7 @@ El celular es lo que la persona tiene a mano en la cocina y en el supermercado, 
 |---|---|---|
 | [TheMealDB](https://www.themealdb.com/) | Recetas, categorías, países e ingredientes | Clave pública de prueba (`1`) |
 | [USDA FoodData Central](https://fdc.nal.usda.gov/) | Calorías y nutrientes de cada ingrediente | API key gratuita de api.data.gov |
-| Gemini (Firebase AI Logic) | Conversación en tiempo real con Chef Teo | Configuración de Firebase |
+| Gemini (Firebase AI Logic) | Conversación con Chef Teo y traducción de las recetas al español | Configuración de Firebase + App Check |
 
 ### Recursos que usará la app
 
@@ -163,8 +164,8 @@ erDiagram
 
 <img src="docs/capturas/04-chef-teo.png" width="260" alt="Pantalla del chef">
 
-- **Muestra:** Chef Teo con su estado ("Teo te escucha"), la receta en curso, el paso actual con barra de progreso y la conversación.
-- **Datos:** los pasos salen de `strInstructions` (TheMealDB) y las respuestas las genera **Gemini** con el contexto de la receta.
+- **Muestra:** Chef Teo con su estado ("Te escucha" / "Escribiendo…"), la receta en curso, el paso actual con barra de progreso y la conversación.
+- **Datos:** los pasos salen de `strInstructions` (TheMealDB), **Gemini** los traduce al español y genera las respuestas con el contexto de la receta.
 - **Acciones:** escribir o hablar con el micrófono, usar respuestas rápidas (temporizador, "¿cuándo está lista?") y avanzar de paso.
 - **A futuro:** animación del personaje con **Lottie** (esperando, escuchando, hablando).
 
@@ -185,9 +186,9 @@ La barra inferior conecta **Inicio, Buscar, Chef y Perfil**. El dato que viaja e
 ```mermaid
 flowchart LR
     UI[Jetpack Compose UI - 5 pantallas] --> VM[ViewModels]
-    VM --> RR[RecipeRepository]
+    VM --> RR[RecetaRepository]
     VM --> NR[NutritionRepository]
-    VM --> CR[ChefRepository]
+    VM --> CR[ChefTeoRepository]
     VM --> DB[(Room - perfil y favoritas)]
     RR --> R1[Retrofit MealDbService] --> A1[(TheMealDB API)]
     NR --> R2[Retrofit UsdaService] --> A2[(USDA FoodData Central)]
@@ -210,7 +211,7 @@ flowchart LR
 | `/list.php?a=list` | GET | `a=list` | Lista de países para el filtro |
 | USDA `/foods/search` | GET | `query`, `api_key` | Calorías y proteínas de cada ingrediente (Detalle) |
 | USDA `/food/{fdcId}` | GET | `fdcId`, `api_key` | Perfil nutricional completo |
-| Gemini (SDK Firebase AI Logic) | — | mensaje + receta actual | Conversación con Chef Teo |
+| Gemini (SDK Firebase AI Logic) | — | mensaje + receta actual | Conversación con Chef Teo y traducción al español |
 
 ### Buenas prácticas planificadas
 
@@ -361,6 +362,117 @@ Los datos siguen ahí después de cerrar y volver a abrir la app.
 | Ismael Mira | ViewModels, estados de carga y error, y conexión de las pantallas con los repositorios |
 
 📘 **Explicación paso a paso de la capa de datos:** [docs/tutorial_capa_datos.md](docs/tutorial_capa_datos.md)
+
+---
+
+## 🤖 Avance 3: Chef Teo con Gemini y app en español
+
+En este avance Chef Teo dejó de responder solo por palabras clave: ahora conversa con **Gemini** a través de **Firebase AI Logic**. Además, como TheMealDB solo trae datos en inglés, Gemini traduce las recetas y **toda la app se ve en español**. Cada traducción se guarda en el celular con **Room**, así que la segunda vez sale al instante.
+
+### Arquitectura
+
+```mermaid
+flowchart TD
+    UI[Pantallas Jetpack Compose] --> VM[ViewModels con StateFlow]
+    VM --> RR[RecetaRepository]
+    VM --> TR[TraduccionRepository]
+    VM --> CT[ChefTeoRepository]
+    RR --> API[ApiClient: Retrofit] --> MDB[(TheMealDB)]
+    TR -->|1. ¿ya está traducida?| DB[(Room: tabla traducciones)]
+    TR -->|2. si no, la traduce| CT
+    CT --> GC[GeminiClient: Firebase AI Logic] --> AC{App Check} --> G[(Gemini)]
+```
+
+Es la misma arquitectura por capas del Avance 2: los ViewModels no saben que existe Gemini, solo conocen las interfaces `ChefTeoRepository` y `TraduccionRepository`.
+
+### Qué hace cada pieza
+
+| Pieza | Archivo | Qué hace |
+|---|---|---|
+| Cliente de Gemini | `data/network/GeminiClient.kt` | Crea los modelos de Gemini: `chat` (conversar, con la personalidad de Teo), `traductor` (receta completa en JSON) y `ligero` (traducciones cortas) |
+| Repositorio de Chef Teo | `data/repository/ChefTeoRepository(Impl).kt` | `traducir()` una receta, `responder()` y `responderEnVivo()`, que entrega la respuesta por pedacitos |
+| Repositorio de traducciones | `data/repository/TraduccionRepository(Impl).kt` | Busca primero en Room; si no está, le pregunta a Gemini y lo guarda. Traduce recetas, nombres de recetas y lo que el usuario busca (de español a inglés) |
+| Diccionario | `data/mapper/Diccionario.kt` | Categorías y países en español con una tabla fija: no necesitan Gemini |
+| Caché local | `data/local/TraduccionEntity.kt`, `TraduccionDao.kt` | Tabla `traducciones` (clave → valor). Se agregó con una **migración** de la versión 1 a la 2, sin borrar favoritas ni perfil |
+| DTOs | `data/dto/TraduccionDto.kt` | Molde del JSON que responde Gemini |
+
+### Qué cambió en cada pantalla
+
+| Pantalla | Antes | Ahora |
+|---|---|---|
+| Inicio | Nombres y categorías en inglés | Categorías con el Diccionario y nombres traducidos por Gemini |
+| Búsqueda | Había que escribir en inglés (*chicken*) | Se escribe en español (*pollo*): Gemini lo pasa a inglés para buscar en TheMealDB |
+| Detalle | Ingredientes y pasos en inglés | Todo en español |
+| Chef Teo | Solo entendía "siguiente", "ingredientes" y "paso" | Responde cualquier pregunta de cocina sabiendo la receta y el paso; la respuesta aparece palabra por palabra |
+
+### Seguridad: sin API key en el código
+
+La app **no guarda ninguna API key de Gemini**. Llama a Gemini a través de **Firebase AI Logic**, y **Firebase App Check** comprueba que la petición viene de nuestra app. El archivo `google-services.json` sí está en el repositorio: solo identifica el proyecto de Firebase, no es una contraseña.
+
+Para correr el proyecto en un emulador nuevo hay que registrar su **token de depuración**:
+
+1. Correr la app y buscar `secret` en **Logcat**.
+2. Copiar el código que aparece después de *"Enter this debug secret into the allow list…"*.
+3. Registrarlo en Firebase: **App Check → Apps → ⋮ → Administrar tokens de depuración**.
+
+### Cómo se hizo más rápido
+
+| Truco | Dónde |
+|---|---|
+| Gemini "piensa" menos antes de responder (`ThinkingLevel.LOW`) | `GeminiClient` |
+| La respuesta llega por pedacitos (`generateContentStream`) y se va mostrando | `ChefTeoRepositoryImpl`, `ChefViewModel` |
+| Al conversar solo se envía el paso actual, no la receta completa | `ChefTeoRepositoryImpl` |
+| Las traducciones se guardan en Room y no se vuelven a pedir | `TraduccionRepositoryImpl` |
+| Los nombres de una lista se traducen en **una sola** llamada | `TraduccionRepositoryImpl` |
+
+### Si Gemini falla
+
+La app no se cae: Teo avisa que no pudo traducir y sigue con la receta en inglés, las listas se quedan con los nombres originales y la búsqueda usa lo que se escribió. El motivo del error queda en **Logcat** con las etiquetas `ChefTeo` y `Traduccion`.
+
+### Capturas
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/capturas/avance3-inicio.png" width="200" alt="Inicio en español"><br>Inicio en español</td>
+    <td align="center"><img src="docs/capturas/avance3-detalle.png" width="200" alt="Detalle traducido"><br>Detalle traducido</td>
+    <td align="center"><img src="docs/capturas/avance3-busqueda.png" width="200" alt="Búsqueda en español"><br>Búsqueda: "pollo"</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/capturas/avance3-chef-escribiendo.png" width="200" alt="Teo está escribiendo"><br>"Teo está escribiendo…"</td>
+    <td align="center"><img src="docs/capturas/avance3-chef-respuesta.png" width="200" alt="Respuesta de Gemini"><br>Teo responde con Gemini</td>
+    <td align="center"><img src="docs/capturas/avance3-sin-internet.png" width="200" alt="Sin internet"><br>Sin internet: la app no se cae</td>
+  </tr>
+</table>
+
+### Pruebas
+
+| Prueba | Resultado esperado | Estado |
+|---|---|---|
+| Abrir Chef Teo con una receta | El paso 1 sale en español | ✅ |
+| "Siguiente paso" | Avanza al instante, sin llamar a Gemini | ✅ |
+| Pregunta libre ("¿Con qué reemplazo la mantequilla?") | Respuesta coherente con la receta | ✅ |
+| Modo avión | Teo avisa y la app no se cierra | ✅ |
+| Inicio, Detalle y Búsqueda | Nombres, categorías, países, ingredientes y pasos en español | ✅ |
+| Buscar "pollo" | Aparecen recetas de pollo | ✅ |
+
+### Librerías nuevas
+
+| Librería | Versión | Para qué |
+|---|---|---|
+| Firebase BoM | 35.1.0 | Elige las versiones correctas de las librerías de Firebase |
+| `firebase-ai` | (BoM) | Firebase AI Logic: llamar a Gemini desde la app |
+| `firebase-appcheck-debug` | (BoM) | App Check en modo depuración (emulador) |
+| Plugin `com.google.gms.google-services` | 4.5.0 | Lee el `google-services.json` |
+
+### Quién hizo qué
+
+| Integrante | Parte del Avance 3 |
+|---|---|
+| Mariana Uribe Muñoz | Coordinación, revisión de los Pull Requests y pruebas |
+| Valeria Usuga | Proyecto en Firebase, App Check, `GeminiClient` y `ChefTeoRepository` |
+| Ismael Mira | Indicador "Teo está escribiendo…" y conexión de `ChefViewModel` con Gemini |
+
+📘 **Explicación paso a paso de la integración con Gemini:** [docs/tutorial_gemini.md](docs/tutorial_gemini.md)
 
 ---
 
