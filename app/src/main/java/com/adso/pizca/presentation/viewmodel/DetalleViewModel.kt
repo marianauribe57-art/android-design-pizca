@@ -7,6 +7,8 @@ import com.adso.pizca.data.repository.RecetaRepositoryImpl
 import com.adso.pizca.data.repository.FavoritaRepositoryImpl
 import com.adso.pizca.data.repository.FavoritaRepository
 import com.adso.pizca.data.repository.RecetaRepository
+import com.adso.pizca.data.repository.TraduccionRepository
+import com.adso.pizca.data.repository.TraduccionRepositoryImpl
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -15,7 +17,8 @@ import kotlinx.coroutines.launch
 
 class DetalleViewModel(
     private val recetaRepository: RecetaRepository = RecetaRepositoryImpl(),
-    private val favoritaRepository: FavoritaRepository = FavoritaRepositoryImpl()
+    private val favoritaRepository: FavoritaRepository = FavoritaRepositoryImpl(),
+    private val traduccion: TraduccionRepository = TraduccionRepositoryImpl()   // NUEVO
 ) : ViewModel() {
 
     // Las recetas de ejemplo rinden 4 raciones
@@ -45,10 +48,19 @@ class DetalleViewModel(
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
-            recetaRepository.obtenerPorId(id)
+            val resultado = recetaRepository.obtenerPorId(id)
+            resultado
                 .onSuccess { _receta.value = it }
                 .onFailure { _errorMessage.value = "No pudimos cargar la receta." }
             _isLoading.value = false
+
+            // NUEVO: cuando llega la traducción, cambiamos la receta por la versión en español.
+            // Si falla, se queda en inglés.
+            resultado.getOrNull()?.let { original ->
+                traduccion.receta(original).onSuccess { traducida ->
+                    if (_receta.value?.id == traducida.id) _receta.value = traducida
+                }
+            }
         }
         // Escuchamos si es favorita: Room avisa solo cada vez que cambia
         favoritaJob?.cancel()
