@@ -3,15 +3,20 @@ package com.adso.pizca.data.repository
 import com.adso.pizca.data.dto.Mensaje
 import com.adso.pizca.data.dto.Receta
 import com.adso.pizca.data.dto.TraduccionDto
+import android.util.Log
 import com.adso.pizca.data.network.GeminiClient
+import com.adso.pizca.data.network.probarEnOrden
 import com.google.firebase.ai.GenerativeModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.json.Json
+import kotlin.coroutines.cancellation.CancellationException
 
 class ChefTeoRepositoryImpl(
-    private val chat: GenerativeModel = GeminiClient.chat,
-    private val traductor: GenerativeModel = GeminiClient.traductor
+    // CAMBIA: listas de modelos; si uno está saturado se usa el siguiente
+    private val chats: List<GenerativeModel> = GeminiClient.chats,
+    private val traductores: List<GenerativeModel> = GeminiClient.traductores
 ) : ChefTeoRepository {
 
     private val json = Json { ignoreUnknownKeys = true }
@@ -28,7 +33,8 @@ class ChefTeoRepositoryImpl(
                 "NOMBRE: ${receta.nombre}\n\n" +                                   // NUEVO
                 "PASOS:\n$pasos\n\nINGREDIENTES:\n$ingredientes"
 
-        val texto = traductor.generateContent(prompt).text ?: error("Gemini no respondió")
+        val texto = probarEnOrden(traductores) { it.generateContent(prompt).text }   // CAMBIA
+            ?: error("Gemini no respondió")
         val traduccion = json.decodeFromString<TraduccionDto>(texto)
 
         // Si Gemini se comió o inventó pasos, mejor no usar la traducción
@@ -51,24 +57,40 @@ class ChefTeoRepositoryImpl(
         historial: List<Mensaje>,
         pregunta: String
     ): Result<String> = runCatching {
-        chat.generateContent(armarPrompt(receta, pasoActual, historial, pregunta))
-            .text?.trim() ?: error("Gemini no respondió")
+        val prompt = armarPrompt(receta, pasoActual, historial, pregunta)
+        probarEnOrden(chats) { it.generateContent(prompt).text }?.trim()            // CAMBIA
+            ?: error("Gemini no respondió")
     }
 
-    // NUEVO: Gemini va mandando la respuesta por pedacitos; juntamos los pedacitos
+    // Gemini va mandando la respuesta por pedacitos; juntamos los pedacitos
     // y entregamos el texto completo hasta ese momento.
+    // CAMBIA: si un modelo falla ANTES de escribir algo, se prueba el siguiente.
     override fun responderEnVivo(
         receta: Receta,
         pasoActual: Int,
         historial: List<Mensaje>,
         pregunta: String
     ): Flow<String> = flow {
-        var acumulado = ""
-        chat.generateContentStream(armarPrompt(receta, pasoActual, historial, pregunta))
-            .collect { pedacito ->
-                acumulado += pedacito.text.orEmpty()
-                if (acumulado.isNotBlank()) emit(acumulado.trim())
+        val prompt = armarPrompt(receta, pasoActual, historial, pregunta)
+        var ultimoError: Exception? = null
+        for ((i, modelo) in chats.withIndex()) {
+            var acumulado = ""
+            try {
+                modelo.generateContentStream(prompt).collect { pedacito ->
+                    acumulado += pedacito.text.orEmpty()
+                    if (acumulado.isNotBlank()) emit(acumulado.trim())
+                }
+                return@flow                              // terminó bien: listo
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                if (acumulado.isNotBlank()) throw e      // ya se veía media respuesta: no la repetimos
+                ultimoError = e
+                Log.w("Gemini", "Modelo ${i + 1} de ${chats.size} falló, pruebo el siguiente", e)
+                if (i < chats.lastIndex) delay(1_000)
             }
+        }
+        throw ultimoError ?: IllegalStateException("No hay modelos de Gemini configurados")
     }
 
     // CAMBIA: el prompt ahora es más corto (más rápido): solo el paso actual,
