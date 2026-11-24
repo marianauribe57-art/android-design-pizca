@@ -1,5 +1,6 @@
 package com.adso.pizca.presentation.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.adso.pizca.data.dto.Mensaje
@@ -8,14 +9,18 @@ import com.adso.pizca.data.repository.ChefTeoRepository
 import com.adso.pizca.data.repository.ChefTeoRepositoryImpl
 import com.adso.pizca.data.repository.RecetaRepository
 import com.adso.pizca.data.repository.RecetaRepositoryImpl
+import com.adso.pizca.data.repository.TraduccionRepository
+import com.adso.pizca.data.repository.TraduccionRepositoryImpl
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlin.coroutines.cancellation.CancellationException
 
 class ChefViewModel(
     private val repository: RecetaRepository = RecetaRepositoryImpl(),
-    private val chefTeo: ChefTeoRepository = ChefTeoRepositoryImpl()   // NUEVO: Teo con Gemini
+    private val chefTeo: ChefTeoRepository = ChefTeoRepositoryImpl(),                // Teo con Gemini
+    private val traduccion: TraduccionRepository = TraduccionRepositoryImpl()        // NUEVO: traducciones guardadas
 ) : ViewModel() {
 
     private var siguienteId = 0L
@@ -29,9 +34,12 @@ class ChefViewModel(
     private val _mensajes = MutableStateFlow<List<Mensaje>>(emptyList())
     val mensajes: StateFlow<List<Mensaje>> = _mensajes.asStateFlow()
 
-    // true mientras Teo "piensa" (esperando a Gemini)
+    // true mientras Teo "piensa" (antes de que llegue la primera palabra de Gemini)
     private val _escribiendo = MutableStateFlow(false)
     val escribiendo: StateFlow<Boolean> = _escribiendo.asStateFlow()
+
+    // NUEVO: true mientras la respuesta todavía está llegando por pedacitos
+    private var respondiendo = false
 
     fun cargarReceta(id: String?) {
         if (id == null) {
@@ -47,8 +55,7 @@ class ChefViewModel(
                     _receta.value = receta
                     _pasoActual.value = 0
                     _mensajes.value = emptyList()
-                    agregarDeTeo("¡Vamos a cocinar ${receta.nombre}! ${receta.emoji}")
-                    traducir(receta)   // CAMBIA: antes decía "te la leo en inglés"
+                    traducir(receta)
                 }
                 .onFailure {
                     agregarDeTeo("Uy, no pude traer la receta 😢 Revisa tu internet e inténtalo otra vez.")
@@ -56,15 +63,18 @@ class ChefViewModel(
         }
     }
 
-    // NUEVO: le pedimos a Gemini la receta en español. Si falla, seguimos en inglés.
+    // CAMBIA: la traducción sale del TraduccionRepository. Si ya se tradujo antes
+    // (por ejemplo, en Detalle), está guardada y es instantánea.
     private suspend fun traducir(receta: Receta) {
         _escribiendo.value = true
-        chefTeo.traducir(receta)
+        traduccion.receta(receta)
             .onSuccess { traducida ->
                 _receta.value = traducida
-                agregarDeTeo("Te traduje la receta al español. 📖")
+                agregarDeTeo("¡Vamos a cocinar ${traducida.nombre}! ${traducida.emoji}")
             }
-            .onFailure {
+            .onFailure { error ->
+                Log.e("ChefTeo", "Falló traducir", error)
+                agregarDeTeo("¡Vamos a cocinar ${receta.nombre}! ${receta.emoji}")
                 agregarDeTeo("No pude traducirla, así que te la leo en inglés como viene del recetario. 📖")
             }
         _escribiendo.value = false
@@ -72,9 +82,9 @@ class ChefViewModel(
     }
 
     fun enviarMensaje(texto: String) {
-        if (texto.isBlank() || _escribiendo.value) return
+        if (texto.isBlank() || _escribiendo.value || respondiendo) return   // CAMBIA: + respondiendo
         agregar(texto.trim(), esDeTeo = false)
-        responder(texto.trim())   // CAMBIA: va tal cual lo escribió (antes iba en minúsculas)
+        responder(texto.trim())
     }
 
     fun siguientePaso() {
@@ -95,7 +105,7 @@ class ChefViewModel(
         )
     }
 
-    // CAMBIA: los comandos cortos se resuelven aquí (rápido y gratis);
+    // Los comandos cortos se resuelven aquí (rápido y gratis);
     // cualquier otra pregunta la responde Gemini.
     private fun responder(texto: String) {
         val receta = _receta.value
@@ -109,20 +119,52 @@ class ChefViewModel(
         }
     }
 
-    // NUEVO: la conversación con Gemini
+    // CAMBIA: la respuesta de Gemini llega "en vivo". Con la primera palabra aparece
+    // la burbuja de Teo, y se va llenando mientras Gemini sigue escribiendo.
     private fun preguntarATeo(receta: Receta, pregunta: String) {
         viewModelScope.launch {
             _escribiendo.value = true
-            chefTeo.responder(receta, _pasoActual.value, _mensajes.value, pregunta)
-                .onSuccess { agregarDeTeo(it) }
-                .onFailure { agregarDeTeo("Uy, se me enredó la cocina 🐭 Inténtalo otra vez en un momento.") }
-            _escribiendo.value = false
+            respondiendo = true
+            var idRespuesta: Long? = null
+            try {
+                chefTeo.responderEnVivo(receta, _pasoActual.value, _mensajes.value, pregunta)
+                    .collect { textoHastaAhora ->
+                        val id = idRespuesta
+                        if (id == null) {
+                            _escribiendo.value = false               // ya llegó la primera palabra
+                            idRespuesta = agregarDeTeo(textoHastaAhora)
+                        } else {
+                            reemplazar(id, textoHastaAhora)
+                        }
+                    }
+                if (idRespuesta == null) {
+                    agregarDeTeo("Uy, me quedé sin palabras 🐭 Pregúntame otra vez.")
+                }
+            } catch (e: CancellationException) {
+                throw e                                  // se cerró la pantalla: no es un error
+            } catch (e: Exception) {
+                Log.e("ChefTeo", "Falló responder", e)
+                if (idRespuesta == null) {
+                    agregarDeTeo("Uy, se me enredó la cocina 🐭 Inténtalo otra vez en un momento.")
+                }
+            } finally {
+                _escribiendo.value = false
+                respondiendo = false
+            }
         }
     }
 
-    private fun agregarDeTeo(texto: String) = agregar(texto, esDeTeo = true)
+    private fun agregarDeTeo(texto: String): Long = agregar(texto, esDeTeo = true)
 
-    private fun agregar(texto: String, esDeTeo: Boolean) {
-        _mensajes.value = _mensajes.value + Mensaje(siguienteId++, texto, esDeTeo)
+    // CAMBIA: devuelve el id del mensaje, para poder ir actualizándolo
+    private fun agregar(texto: String, esDeTeo: Boolean): Long {
+        val id = siguienteId++
+        _mensajes.value = _mensajes.value + Mensaje(id, texto, esDeTeo)
+        return id
+    }
+
+    // NUEVO: cambia el texto de un mensaje que ya está en el chat
+    private fun reemplazar(id: Long, texto: String) {
+        _mensajes.value = _mensajes.value.map { if (it.id == id) it.copy(texto = texto) else it }
     }
 }

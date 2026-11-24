@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.adso.pizca.data.dto.Receta
 import com.adso.pizca.data.repository.RecetaRepositoryImpl
 import com.adso.pizca.data.repository.RecetaRepository
+import com.adso.pizca.data.repository.TraduccionRepository
+import com.adso.pizca.data.repository.TraduccionRepositoryImpl
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,7 +23,8 @@ enum class ModoBusqueda(val titulo: String) {
 }
 
 class BusquedaViewModel(
-    private val repository: RecetaRepository = RecetaRepositoryImpl()
+    private val repository: RecetaRepository = RecetaRepositoryImpl(),
+    private val traduccion: TraduccionRepository = TraduccionRepositoryImpl()   // NUEVO
 ) : ViewModel() {
 
     private val _modo = MutableStateFlow(ModoBusqueda.NOMBRE)
@@ -99,10 +102,11 @@ class BusquedaViewModel(
 
             val pais = _paisSeleccionado.value
             val resultado = when (_modo.value) {
-                ModoBusqueda.NOMBRE -> repository.buscarPorNombre(_texto.value.trim())
+                // CAMBIA: TheMealDB solo entiende inglés → "pollo" se busca como "chicken"
+                ModoBusqueda.NOMBRE -> repository.buscarPorNombre(traduccion.aIngles(_texto.value))
                 ModoBusqueda.INGREDIENTES ->
                     if (_ingredientes.value.isEmpty()) Result.success(emptyList())
-                    else repository.buscarPorIngredientes(_ingredientes.value)
+                    else repository.buscarPorIngredientes(_ingredientes.value.map { traduccion.aIngles(it) })
                 ModoBusqueda.PAIS ->
                     if (pais == null) Result.success(emptyList())
                     else repository.buscarPorPais(pais)
@@ -117,6 +121,9 @@ class BusquedaViewModel(
                     }
                 }
             _isLoading.value = false
+
+            // NUEVO: los nombres de los resultados en español
+            resultado.getOrNull()?.let { lista -> _resultados.value = traduccion.nombres(lista) }
         }
     }
 }

@@ -14,6 +14,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.adso.pizca.data.dto.Receta
+import com.adso.pizca.data.mapper.Diccionario
 import com.adso.pizca.ui.theme.CafeOscuro
 import com.adso.pizca.ui.theme.Durazno
 
@@ -39,7 +40,8 @@ fun RecetaCard(
             IconoReceta(receta.categoria)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(receta.nombre, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
-                val detalle = listOf(receta.pais, receta.categoria).filter { it.isNotBlank() }.joinToString(" · ")
+                val detalle = listOf(Diccionario.pais(receta.pais), Diccionario.categoria(receta.categoria))   // CAMBIA: en español
+                    .filter { it.isNotBlank() }.joinToString(" · ")
                 if (detalle.isNotEmpty()) Text(detalle, fontSize = 13.sp)
             }
             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)

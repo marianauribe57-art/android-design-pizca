@@ -23,6 +23,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.adso.pizca.data.mapper.Diccionario
 import com.adso.pizca.presentation.components.Cargando          // NUEVO
 import com.adso.pizca.presentation.components.ChefTeoImagen
 import com.adso.pizca.presentation.components.ErrorCard         // NUEVO
@@ -123,8 +124,9 @@ fun DetalleScreen(
                 Text(r.nombre, fontSize = 26.sp, lineHeight = 30.sp, fontWeight = FontWeight.Bold)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     // CAMBIA: si vienen vacíos, no se pinta la etiqueta
-                    if (r.pais.isNotBlank()) Etiqueta(r.pais, Menta)
-                    if (r.categoria.isNotBlank()) Etiqueta(r.categoria, AzulCielo)
+                    // CAMBIA: se muestran en español
+                    if (r.pais.isNotBlank()) Etiqueta(Diccionario.pais(r.pais), Menta)
+                    if (r.categoria.isNotBlank()) Etiqueta(Diccionario.categoria(r.categoria), AzulCielo)
                 }
             }
 

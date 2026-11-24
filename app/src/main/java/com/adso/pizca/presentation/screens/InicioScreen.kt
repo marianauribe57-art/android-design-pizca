@@ -16,6 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.adso.pizca.data.mapper.Diccionario
 import com.adso.pizca.presentation.components.Cargando      // NUEVO
 import com.adso.pizca.presentation.components.ChefTeoImagen
 import com.adso.pizca.presentation.components.ChipPildora
@@ -56,7 +57,7 @@ fun InicioScreen(
                 ) {
                     categorias.forEach { categoria ->            // CAMBIA: antes era viewModel.categorias
                         ChipPildora(
-                            texto = categoria,
+                            texto = Diccionario.categoria(categoria),   // CAMBIA: se muestra en español
                             seleccionado = categoria == seleccionada,
                             colorNormal = AzulCielo,
                             onClick = { viewModel.seleccionarCategoria(categoria) }
