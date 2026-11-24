@@ -28,11 +28,11 @@ fun MealDto.toReceta(categoriaPorDefecto: String = ""): Receta {
     }
 
     // 3. Las instrucciones vienen en un solo texto: lo partimos por saltos de línea
-    //    y quitamos líneas vacías o que solo dicen "STEP 1"
+    //    y quitamos líneas vacías o que solo dicen "STEP 1", "1", "2." o "3)"
     val pasos = strInstructions.orEmpty()
         .split(Regex("\\r?\\n"))
         .map { it.trim() }
-        .filter { it.isNotBlank() && !it.matches(Regex("(?i)step\\s*\\d+")) }
+        .filter { it.isNotBlank() && !it.matches(Regex("(?i)(step\\s*)?\\d+[.):]?")) }   // CAMBIA
 
     return Receta(
         id = idMeal,

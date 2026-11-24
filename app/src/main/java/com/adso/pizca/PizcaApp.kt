@@ -18,7 +18,9 @@ class PizcaApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        database = Room.databaseBuilder(this, PizcaDatabase::class.java, "pizca.db").build()
+        database = Room.databaseBuilder(this, PizcaDatabase::class.java, "pizca.db")
+            .addMigrations(PizcaDatabase.MIGRACION_1_2)   // NUEVO: agrega la tabla de traducciones
+            .build()
         // Firebase + App Check (modo depuración para el emulador)
         Firebase.initialize(context = this)
         Firebase.appCheck.installAppCheckProviderFactory(

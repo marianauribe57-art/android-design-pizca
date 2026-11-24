@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.adso.pizca.data.dto.Receta
+import com.adso.pizca.data.mapper.Diccionario
 import com.adso.pizca.presentation.components.Cargando          // NUEVO
 import com.adso.pizca.presentation.components.ChefTeoImagen
 import com.adso.pizca.presentation.components.ChipPildora       // NUEVO
@@ -66,7 +67,7 @@ fun BusquedaScreen(
     val etiqueta = when (modo) {
         ModoBusqueda.NOMBRE -> "Nombre de la receta"
         ModoBusqueda.INGREDIENTES -> "Escribe un ingrediente y toca +"
-        ModoBusqueda.PAIS -> "Filtra países en inglés (ej: mex)"     // CAMBIA: el campo filtra los chips
+        ModoBusqueda.PAIS -> "Filtra países (ej: mex)"     // CAMBIA: ya se puede escribir en español
     }
 
     Column(
@@ -125,9 +126,13 @@ fun BusquedaScreen(
 
         // Modo país: chips de países filtrados por lo que se escribe arriba
         if (modo == ModoBusqueda.PAIS) {
-            val paisesFiltrados = paises.filter { it.contains(filtroPais.trim(), ignoreCase = true) }
+            // CAMBIA: encuentra el país escrito en español o en inglés
+            val paisesFiltrados = paises.filter {
+                it.contains(filtroPais.trim(), ignoreCase = true) ||
+                    Diccionario.pais(it).contains(filtroPais.trim(), ignoreCase = true)
+            }
             if (paises.isNotEmpty() && paisesFiltrados.isEmpty()) {
-                Text("No hay países con \"${filtroPais.trim()}\". Escríbelo en inglés, ej: Mexican", fontSize = 14.sp, color = TextoSuave)
+                Text("No hay países con \"${filtroPais.trim()}\". Prueba con otro, ej: Mexicana", fontSize = 14.sp, color = TextoSuave)
             }
             FlowRow(
                 modifier = Modifier
@@ -138,7 +143,7 @@ fun BusquedaScreen(
             ) {
                 paisesFiltrados.forEach { pais ->
                     ChipPildora(
-                        texto = pais,
+                        texto = Diccionario.pais(pais),   // CAMBIA: se muestra en español
                         seleccionado = pais == paisSeleccionado,
                         colorNormal = Menta,
                         onClick = { viewModel.seleccionarPais(pais) }
@@ -268,7 +273,7 @@ private fun FilaResultado(receta: Receta, onClick: () -> Unit) {
             IconoReceta(receta.categoria, 46.dp)
             Column(Modifier.weight(1f)) {
                 Text(receta.nombre, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                Text(receta.pais, fontSize = 13.sp)
+                Text(Diccionario.pais(receta.pais), fontSize = 13.sp)   // CAMBIA: en español
             }
             Text("Ver ›", fontSize = 14.sp, fontWeight = FontWeight.Bold)
         }

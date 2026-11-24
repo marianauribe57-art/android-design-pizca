@@ -5,13 +5,16 @@ import androidx.lifecycle.viewModelScope
 import com.adso.pizca.data.dto.Receta
 import com.adso.pizca.data.repository.RecetaRepositoryImpl
 import com.adso.pizca.data.repository.RecetaRepository
+import com.adso.pizca.data.repository.TraduccionRepository
+import com.adso.pizca.data.repository.TraduccionRepositoryImpl
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class InicioViewModel(
-    private val repository: RecetaRepository = RecetaRepositoryImpl()
+    private val repository: RecetaRepository = RecetaRepositoryImpl(),
+    private val traduccion: TraduccionRepository = TraduccionRepositoryImpl()   // NUEVO
 ) : ViewModel() {
 
     // CAMBIA: las categorías ahora llegan de la API, por eso son StateFlow
@@ -53,6 +56,14 @@ class InicioViewModel(
                 .onFailure { _errorMessage.value = "No pudimos cargar las recetas. Revisa tu internet." }
 
             _isLoading.value = false
+
+            // NUEVO: los nombres en español. Se ven en inglés un momento y luego cambian;
+            // la segunda vez ya están guardados y salen de una vez.
+            resultado.getOrNull()?.let { lista ->
+                val traducidas = traduccion.nombres(lista)
+                // solo si el usuario no cambió de categoría mientras tanto
+                if (_recetas.value.map { it.id } == lista.map { it.id }) _recetas.value = traducidas
+            }
         }
     }
 
